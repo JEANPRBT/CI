@@ -35,7 +35,8 @@ public final class CIServer {
 
         try {
             JSONObject obj = new JSONObject(response);
-            // String branch = obj.getString("refs").substring("refs/heads/".length());
+            String branch = obj.getString("refs").substring("refs/heads/".length());
+            System.out.println(branch);
             System.out.println("json object parsed succesfully");
 
         } catch (org.json.JSONException e){
