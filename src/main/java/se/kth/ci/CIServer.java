@@ -29,8 +29,6 @@ public final class CIServer {
 
     private void handleRequest(){
 
-
-
     }
 
     private void parseResponse(String response){
