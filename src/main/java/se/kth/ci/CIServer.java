@@ -21,6 +21,7 @@ public final class CIServer {
         });
         post(path, (req, res) -> {
             System.out.println("POST request received.");
+            System.out.println(req.body());
             parseResponse(req.body());
             return "";
         });
