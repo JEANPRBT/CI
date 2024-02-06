@@ -6,6 +6,7 @@ import static spark.Spark.*;
 // JSON parsing utilities
 import org.json.*;
 
+// I/O
 import java.io.File;
 import java.io.IOException;
 
@@ -17,30 +18,78 @@ import java.io.IOException;
 public final class CIServer {
     public CIServer(int port, String path) {
         System.out.println("Server started...");
+
+        // Set up port to listen on
         port(port);
+
+        // GET requests handler
         get(path, (req, res) -> {
             System.out.println("GET request received.");
             return "";
         });
+
+        // POST requests handler
         post(path, (req, res) -> {
             System.out.println("POST request received.");
-            parseResponse(req.body());
+            try {
+                String[] parameters = parseResponse(req.body());
+                handleRequest(parameters[0], parameters[1]);
+            } catch (org.json.JSONException e){
+                System.out.println("Error while parsing JSON.");
+            }
             return "";
         });
     }
 
-    private void handleRequest(){
+    /**
+     * Private method for handling POST request from GitHub webhook and trigger the build.
+     * It clones the corresponding branch of the target repo, and then launches the build operation.
+     * @param branchName String : the branch on which push was made
+     * @param repoURL String : the repository to be build URL
+     */
+    private void handleRequest(String branchName, String repoURL){
+        String directory = "to_build";
 
-        String cloneCommand = "git clone --single-branch --branch ";
+        System.out.println(repoURL);
+
+        String[] command = new String[]{"git", "clone", repoURL, "--branch", branchName, "--single-branch", directory};
 
         try {
 
-            Process cloneProcess = Runtime.getRuntime().exec(new String[]{cloneCommand});
+            // Execute the clone command
+            Process cloneProcess = Runtime.getRuntime().exec(command);
             int cloneExitCode = cloneProcess.waitFor();
+
+            // Check if the clone was successful
+            if (cloneExitCode == 0) {
+                System.out.println("Repository cloned successfully.");
+
+                // Change to the repository directory
+                File repoDirectory = new File(directory);
+                if (repoDirectory.exists() && repoDirectory.isDirectory()) {
+                    // Execute the build process within the repository directory
+                    // Replace this command with your actual build command
+                    // String buildCommand = "mvn clean install"; // Example Maven build command
+
+                    /*Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
+                    int buildExitCode = buildProcess.waitFor();
+
+                    // Check if the build process was successful
+                    if (buildExitCode == 0) {
+                        System.out.println("Build for branch " + branch + " succeeded.");
+                    } else {
+                        System.err.println("Build for branch " + branch + " failed. Exit code: " + buildExitCode);
+                    }*/
+                    System.out.println("Directory exists.");
+                } else {
+                    System.err.println("Repository directory does not exist: " + directory);
+                }
+            } else {
+                System.err.println("Failed to clone repository. Exit code: " + cloneExitCode);
+            }
         } catch (IOException | InterruptedException e) {
             System.err.println("Error cloning repository or executing build command: " + e.getMessage());
         }
-
 
     }
 
@@ -48,22 +97,12 @@ public final class CIServer {
      * Private method for parsing JSON response from GitHub webhook into relevant
      * parameters for triggering build process.
      * @param response String : the request body to be parsed
+     * @return String[] : an array containing the branch name and the repository URL
      */
-    private void parseResponse(String response){
-        try {
-            JSONObject obj = new JSONObject(response);
-
-            // Retrieve the branch
-            String branch = obj.getString("ref").substring("refs/heads/".length());
-
-            String repoURL = obj.getJSONObject("repository").getString("url");
-            System.out.println(repoURL);
-
-
-
-
-        } catch (org.json.JSONException e){
-            System.out.println("Error while parsing JSON.");
-        }
+    private String[] parseResponse(String response) throws org.json.JSONException{
+        JSONObject obj = new JSONObject(response);
+        String branch = obj.getString("ref").substring("refs/heads/".length());
+        String repoURL = obj.getJSONObject("repository").getString("url");
+        return new String[]{branch, repoURL};
     }
 }
