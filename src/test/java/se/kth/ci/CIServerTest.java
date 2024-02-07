@@ -52,4 +52,20 @@ class CIServerTest {
             server.parseResponse(notJson);
         }, "Method parsed a non-JSON string.");
     }
+
+    /**
+     * Test handling requests, verify that repo is cloned.
+     * Note: verify that everything is delelted in 
+     */
+    @Test
+    public void testValidURLandBranch(){
+        String branchName = "turtles";
+        String repoURL = "https://github.com/rickardo-cornelli/testRepo.git";
+        try{
+            int exitCode = server.handleRequest(branchName, repoURL);
+            assertEquals(exitCode, 1, "Expected handleRequest to return 1, got " + exitCode);
+        }catch(Exception e){
+            fail("Test failed with exception " + e);
+        }
+    }
 }
