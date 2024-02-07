@@ -55,11 +55,11 @@ class CIServerTest {
 
     /**
      * Test handling requests, verify that repo is cloned.
-     * Note: verify that everything is delelted in 
+     * Note: verify that everything is deleted in to_build
      */
     @Test
     public void testValidURLandBranch(){
-        String branchName = "turtles";
+        String branchName = "turtles2";
         String repoURL = "https://github.com/rickardo-cornelli/testRepo.git";
         try{
             int exitCode = server.handleRequest(branchName, repoURL);
