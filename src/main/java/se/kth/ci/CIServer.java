@@ -58,7 +58,7 @@ public final class CIServer {
      * @param repoURL    String : the repository to be build URL
      * @return exit code, i.e 1 if build succeeded and 0 otherwise
      */
-    private int handleRequest(String branchName, String repoURL) {
+    public int handleRequest(String branchName, String repoURL) {
 
         int exitCode = 0;
 
