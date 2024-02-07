@@ -78,7 +78,6 @@ public final class CIServer {
                 if (repoDirectory.exists() && repoDirectory.isDirectory()) {
                     System.out.println("Directory exists.");
 
-                    // Execute the build process within the repository directory
                     String[] buildCommand = new String[]{"./gradlew",  "build"};
 
                     // Execute the build command
