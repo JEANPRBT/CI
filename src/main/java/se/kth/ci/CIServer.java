@@ -42,7 +42,7 @@ public final class CIServer {
             System.out.println("POST request received.");
             try {
                 String[] parameters = parseResponse(req.body());
-                handleRequest(parameters[0], parameters[1]);
+                int exitCode = handleRequest(parameters[0], parameters[1]);
             } catch (org.json.JSONException e) {
                 System.out.println("Error while parsing JSON.");
             }
@@ -51,13 +51,17 @@ public final class CIServer {
     }
 
     /**
-     * Private method for handling POST request from GitHub webhook and trigger the build.
+     * Method for handling POST request from GitHub webhook and trigger the build.
      * It clones the corresponding branch of the target repo, and then launches the build operation.
      *
      * @param branchName String : the branch on which push was made
      * @param repoURL    String : the repository to be build URL
+     * @return exit code, i.e 1 if build succeeded and 0 otherwise
      */
-    private void handleRequest(String branchName, String repoURL) {
+    private int handleRequest(String branchName, String repoURL) {
+
+        int exitCode = 0;
+
         String directory = "to_build";
 
         String[] cloneCommand = new String[]{"git", "clone", repoURL, "--branch", branchName, "--single-branch", directory};
@@ -87,6 +91,7 @@ public final class CIServer {
                     // Check if the build process was successful
                     if (buildExitCode == 0) {
                         System.out.println("Build for branch " + branchName + " succeeded.");
+                        exitCode = 1;
                     } else {
                         System.err.println("Build for branch " + branchName + " failed. Exit code: " + buildExitCode);
                     }
@@ -104,16 +109,16 @@ public final class CIServer {
         } catch (IOException | InterruptedException e) {
             System.err.println("Error cloning repository or executing build cloneCommand: " + e.getMessage());
         }
-
+        return exitCode;
     }
 
     /**
-     * Private method for parsing JSON response from GitHub webhook into relevant
+     * Method for parsing JSON response from GitHub webhook into relevant
      * parameters for triggering build process.
      * @param response String : the request body to be parsed
      * @return String[] : an array containing the branch name and the repository URL
      */
-    private String[] parseResponse(String response) throws org.json.JSONException{
+    public String[] parseResponse(String response) throws org.json.JSONException{
         JSONObject obj = new JSONObject(response);
         String branch = obj.getString("ref").substring("refs/heads/".length());
         String repoURL = obj.getJSONObject("repository").getString("url");
