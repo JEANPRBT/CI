@@ -10,12 +10,21 @@ import org.json.*;
 import java.io.File;
 import java.io.IOException;
 
+// Recursive directory deletion
+import org.apache.commons.io.FileUtils;
 
 /**
  * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
  * Class representing our CI server which handles all incoming webhooks using HTTP methods.
  */
 public final class CIServer {
+
+    /**
+     * Public constructor for a CI server.
+     *
+     * @param port the port number to listen traffic on
+     * @param path String : the endpoint to send webhooks to
+     */
     public CIServer(int port, String path) {
         System.out.println("Server started...");
 
@@ -25,7 +34,7 @@ public final class CIServer {
         // GET requests handler
         get(path, (req, res) -> {
             System.out.println("GET request received.");
-            return "";
+            return "CI Server for Java Projects with Gradle.";
         });
 
         // POST requests handler
@@ -34,7 +43,7 @@ public final class CIServer {
             try {
                 String[] parameters = parseResponse(req.body());
                 handleRequest(parameters[0], parameters[1]);
-            } catch (org.json.JSONException e){
+            } catch (org.json.JSONException e) {
                 System.out.println("Error while parsing JSON.");
             }
             return "";
@@ -44,20 +53,19 @@ public final class CIServer {
     /**
      * Private method for handling POST request from GitHub webhook and trigger the build.
      * It clones the corresponding branch of the target repo, and then launches the build operation.
+     *
      * @param branchName String : the branch on which push was made
-     * @param repoURL String : the repository to be build URL
+     * @param repoURL    String : the repository to be build URL
      */
-    private void handleRequest(String branchName, String repoURL){
+    private void handleRequest(String branchName, String repoURL) {
         String directory = "to_build";
 
-        System.out.println(repoURL);
-
-        String[] command = new String[]{"git", "clone", repoURL, "--branch", branchName, "--single-branch", directory};
+        String[] cloneCommand = new String[]{"git", "clone", repoURL, "--branch", branchName, "--single-branch", directory};
 
         try {
 
             // Execute the clone command
-            Process cloneProcess = Runtime.getRuntime().exec(command);
+            Process cloneProcess = Runtime.getRuntime().exec(cloneCommand);
             int cloneExitCode = cloneProcess.waitFor();
 
             // Check if the clone was successful
@@ -66,29 +74,36 @@ public final class CIServer {
 
                 // Change to the repository directory
                 File repoDirectory = new File(directory);
-                if (repoDirectory.exists() && repoDirectory.isDirectory()) {
-                    // Execute the build process within the repository directory
-                    // Replace this command with your actual build command
-                    // String buildCommand = "mvn clean install"; // Example Maven build command
 
-                    /*Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
+                if (repoDirectory.exists() && repoDirectory.isDirectory()) {
+                    System.out.println("Directory exists.");
+
+                    // Execute the build process within the repository directory
+                    String[] buildCommand = new String[]{"./gradlew",  "build"};
+
+                    // Execute the build command
+                    Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
                     int buildExitCode = buildProcess.waitFor();
 
                     // Check if the build process was successful
                     if (buildExitCode == 0) {
-                        System.out.println("Build for branch " + branch + " succeeded.");
+                        System.out.println("Build for branch " + branchName + " succeeded.");
                     } else {
-                        System.err.println("Build for branch " + branch + " failed. Exit code: " + buildExitCode);
-                    }*/
-                    System.out.println("Directory exists.");
+                        System.err.println("Build for branch " + branchName + " failed. Exit code: " + buildExitCode);
+                    }
+
                 } else {
                     System.err.println("Repository directory does not exist: " + directory);
                 }
+
+                FileUtils.deleteDirectory(repoDirectory);
+                System.out.println("Repository deleted successfully");
+
             } else {
                 System.err.println("Failed to clone repository. Exit code: " + cloneExitCode);
             }
         } catch (IOException | InterruptedException e) {
-            System.err.println("Error cloning repository or executing build command: " + e.getMessage());
+            System.err.println("Error cloning repository or executing build cloneCommand: " + e.getMessage());
         }
 
     }
