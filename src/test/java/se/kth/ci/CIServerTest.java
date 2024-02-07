@@ -1,16 +1,31 @@
 package se.kth.ci;
 
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
 import java.util.Arrays;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 
 class CIServerTest {
 
-    CIServer server = new CIServer(8080, "/");
+    private static CIServer server;
 
+    /**
+     * Start the server properly before the tests
+     */
+    @BeforeAll
+    static void startServer() {
+        server = new CIServer(8080, "/");
+    }
+
+    /**
+     * Stop the server after all tests are done
+     */
+    @AfterAll
+    static void stopServer() {
+        spark.Spark.stop();
+    }
     /**
      * Test for method `parseResponse`.
      * Checks that it extracts good information from JSON String.
