@@ -5,6 +5,8 @@ plugins {
 
 group = 'se.kth.ci'
 
+//mainClassName = 'se.kth.ci.Main'
+
 repositories {
     mavenCentral()
 }
@@ -19,3 +21,5 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+
