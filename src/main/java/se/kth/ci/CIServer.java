@@ -51,11 +51,12 @@ public final class CIServer {
                         System.out.println("Build failed.");
                     }
                     FileUtils.deleteDirectory(new File(buildDirectory));
+                    System.out.println("Build directory deleted.");
                 }
             } catch (org.json.JSONException e) {
-                System.out.println("Error while parsing JSON.\n" + e.getMessage());
+                System.out.println("Error while parsing JSON. \n" + e.getMessage());
             } catch (IOException e) {
-                System.out.println("Error while deleting build directory.\n" + e.getMessage());
+                System.out.println("Error while deleting build directory. \n" + e.getMessage());
             }
             return "";
         });
@@ -101,7 +102,7 @@ public final class CIServer {
         File repoDirectory = new File(buildDirectory);
         if (repoDirectory.exists() && repoDirectory.isDirectory()) {
             System.out.println("Directory exists.");
-            String[] buildCommand = new String[]{"./gradlew",  "build"};
+            String[] buildCommand = new String[]{"./gradlew",  "build", "testClasses", "-x", "test"};
             try {
                 Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
                 int buildExitCode = buildProcess.waitFor();
