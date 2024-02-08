@@ -19,6 +19,8 @@ import org.apache.commons.io.FileUtils;
  */
 public final class CIServer {
 
+    public final static String buildDirectory  = "to_build";
+
     /**
      * Public constructor for a CI server.
      *
@@ -26,90 +28,98 @@ public final class CIServer {
      * @param path String : the endpoint to send webhooks to
      */
     public CIServer(int port, String path) {
-        System.out.println("Server started...");
 
         // Set up port to listen on
         port(port);
 
-        // GET requests handler
+        // ------------------------------- Launching the server ------------------------------- //
         get(path, (req, res) -> {
             System.out.println("GET request received.");
             return "CI Server for Java Projects with Gradle.";
         });
 
-        // POST requests handler
         post(path, (req, res) -> {
             System.out.println("POST request received.");
             try {
                 String[] parameters = parseResponse(req.body());
-                int exitCode = handleRequest(parameters[0], parameters[1]);
+                ErrorCode exitCode = cloneRepository(parameters[1], parameters[0]);
+                if (exitCode == ErrorCode.SUCCESS) {
+                    exitCode = triggerBuild();
+                    if (exitCode == ErrorCode.SUCCESS) {
+                        System.out.println("Build was successful.");
+                    } else {
+                        System.out.println("Build failed.");
+                    }
+                    FileUtils.deleteDirectory(new File(buildDirectory));
+                }
             } catch (org.json.JSONException e) {
-                System.out.println("Error while parsing JSON.");
+                System.out.println("Error while parsing JSON.\n" + e.getMessage());
+            } catch (IOException e) {
+                System.out.println("Error while deleting build directory.\n" + e.getMessage());
             }
             return "";
         });
+
+        System.out.println("Server started...");
     }
 
     /**
-     * Method for handling POST request from GitHub webhook and trigger the build.
-     * It clones the corresponding branch of the target repo, and then launches the build operation.
-     *
-     * @param branchName String : the branch on which push was made
-     * @param repoURL    String : the repository to be build URL
-     * @return exit code, i.e 1 if build succeeded and 0 otherwise
+     * Method for cloning the repository corresponding to the given URL and branch name.
+     * It clones the repository in the folder `to_build`.
+     * @param repoURL String : URL of the repository to be built
+     * @param branchName String : branch on which push was made
+     * @return ErrorCode : exit code of the operation
      */
-    public int handleRequest(String branchName, String repoURL) {
-
-        int exitCode = 0;
-
-        String directory = "to_build";
-
-        String[] cloneCommand = new String[]{"git", "clone", repoURL, "--branch", branchName, "--single-branch", directory};
-
+    public ErrorCode cloneRepository(String repoURL, String branchName){
+        String[] cloneCommand = new String[]{
+                "git",
+                "clone", repoURL,
+                "--branch", branchName,
+                "--single-branch",
+                buildDirectory};
         try {
-
-            // Execute the clone command
             Process cloneProcess = Runtime.getRuntime().exec(cloneCommand);
             int cloneExitCode = cloneProcess.waitFor();
-
-            // Check if the clone was successful
             if (cloneExitCode == 0) {
                 System.out.println("Repository cloned successfully.");
-
-                // Change to the repository directory
-                File repoDirectory = new File(directory);
-
-                if (repoDirectory.exists() && repoDirectory.isDirectory()) {
-                    System.out.println("Directory exists.");
-
-                    String[] buildCommand = new String[]{"./gradlew",  "build"};
-
-                    // Execute the build command
-                    Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
-                    int buildExitCode = buildProcess.waitFor();
-
-                    // Check if the build process was successful
-                    if (buildExitCode == 0) {
-                        System.out.println("Build for branch " + branchName + " succeeded.");
-                        exitCode = 1;
-                    } else {
-                        System.err.println("Build for branch " + branchName + " failed. Exit code: " + buildExitCode);
-                    }
-
-                } else {
-                    System.err.println("Repository directory does not exist: " + directory);
-                }
-
-                FileUtils.deleteDirectory(repoDirectory);
-                System.out.println("Repository deleted successfully");
-
+                return ErrorCode.SUCCESS;
             } else {
                 System.err.println("Failed to clone repository. Exit code: " + cloneExitCode);
+                return ErrorCode.ERROR_CLONE;
             }
         } catch (IOException | InterruptedException e) {
-            System.err.println("Error cloning repository or executing build cloneCommand: " + e.getMessage());
+            System.err.println("Error running shell commands " + e.getMessage());
+            return ErrorCode.ERROR_IO;
         }
-        return exitCode;
+    }
+
+    /**
+     * Method for triggering the build process for the repository in the `to_build` directory.
+     * @return ErrorCode : exit code of the operation
+     */
+    public ErrorCode triggerBuild(){
+        File repoDirectory = new File(buildDirectory);
+        if (repoDirectory.exists() && repoDirectory.isDirectory()) {
+            System.out.println("Directory exists.");
+            String[] buildCommand = new String[]{"./gradlew",  "build"};
+            try {
+                Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
+                int buildExitCode = buildProcess.waitFor();
+                if (buildExitCode == 0) {
+                    System.out.println("Build for branch succeeded.");
+                    return ErrorCode.SUCCESS;
+                } else {
+                    System.err.println("Build for branch failed. Exit code: " + buildExitCode);
+                    return ErrorCode.ERROR_BUILD;
+                }
+            } catch (IOException | InterruptedException e) {
+                System.err.println("Error running shell commands " + e.getMessage());
+                return ErrorCode.ERROR_IO;
+            }
+        } else {
+            System.err.println("Repository directory does not exist: " + buildDirectory);
+            return ErrorCode.ERROR_FILE;
+        }
     }
 
     /**
