@@ -6,9 +6,13 @@ import static spark.Spark.*;
 // JSON parsing utilities
 import org.json.*;
 
+import java.io.BufferedReader;
 // I/O
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 // Recursive directory deletion
 import org.apache.commons.io.FileUtils;
@@ -43,6 +47,8 @@ public final class CIServer {
             try {
                 String[] parameters = parseResponse(req.body());
                 int exitCode = handleRequest(parameters[0], parameters[1]);
+                triggerTesting(parameters[0]);
+                deleteDir();
             } catch (org.json.JSONException e) {
                 System.out.println("Error while parsing JSON.");
             }
@@ -59,19 +65,23 @@ public final class CIServer {
      * @return exit code, i.e 1 if build succeeded and 0 otherwise
      */
     public int handleRequest(String branchName, String repoURL) {
-
+        
         int exitCode = 0;
 
         String directory = "to_build";
+        
 
         String[] cloneCommand = new String[]{"git", "clone", repoURL, "--branch", branchName, "--single-branch", directory};
-
+        for (String command : cloneCommand) {
+            System.out.print(command + " ");
+        }
         try {
 
             // Execute the clone command
             Process cloneProcess = Runtime.getRuntime().exec(cloneCommand);
             int cloneExitCode = cloneProcess.waitFor();
 
+           
             // Check if the clone was successful
             if (cloneExitCode == 0) {
                 System.out.println("Repository cloned successfully.");
@@ -82,7 +92,7 @@ public final class CIServer {
                 if (repoDirectory.exists() && repoDirectory.isDirectory()) {
                     System.out.println("Directory exists.");
 
-                    String[] buildCommand = new String[]{"./gradlew",  "build"};
+                    String[] buildCommand = new String[]{"./gradlew.bat",  "build"};
 
                     // Execute the build command
                     Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
@@ -95,13 +105,10 @@ public final class CIServer {
                     } else {
                         System.err.println("Build for branch " + branchName + " failed. Exit code: " + buildExitCode);
                     }
-
+                 
                 } else {
                     System.err.println("Repository directory does not exist: " + directory);
                 }
-
-                FileUtils.deleteDirectory(repoDirectory);
-                System.out.println("Repository deleted successfully");
 
             } else {
                 System.err.println("Failed to clone repository. Exit code: " + cloneExitCode);
@@ -111,8 +118,52 @@ public final class CIServer {
         }
         return exitCode;
     }
-
     /**
+     * Method for running Junit tests.  
+     * @throws InterruptedException 
+     * @throws IOException 
+     */
+    public int triggerTesting(String branchName) throws InterruptedException, IOException{   
+        int exitCode = 0;
+
+        if (!Files.isDirectory(Paths.get("to_build/src/test"))) {
+            System.out.println("Project does not contain tests.");
+            return exitCode;
+        }
+        else{
+            File testDir = new File("to_build");
+            if (testDir.exists() && testDir.isDirectory()){
+                System.out.println("Test directory exists, running tests.");
+    
+                String[] testCommand = new String[]{"./gradlew.bat",  "test"};
+    
+                // Execute the build command
+                Process testProcess = Runtime.getRuntime().exec(testCommand, null, testDir);
+                int testExitCode = testProcess.waitFor();
+    
+                if (testExitCode == 0) {
+                    System.out.println("tests for branch " + branchName + " succeeded.");
+                    exitCode = 1;
+                } else {
+                    System.err.println("tests for branch " + branchName + " failed. Exit code: " + testExitCode);
+                }
+            }
+            
+            return exitCode;
+        }
+    }
+    
+    /**
+     * Delete Directory
+     * @throws IOException 
+     */
+    public void deleteDir() throws IOException{
+        File repoDirectory = new File("to_build");
+        FileUtils.deleteDirectory(repoDirectory);
+        System.out.println("Repository deleted successfully");
+    }
+    
+     /**
      * Method for parsing JSON response from GitHub webhook into relevant
      * parameters for triggering build process.
      * @param response String : the request body to be parsed

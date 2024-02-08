@@ -59,8 +59,8 @@ class CIServerTest {
      */
     @Test
     public void testValidURLandBranch(){
-        String branchName = "turtles2";
-        String repoURL = "https://github.com/rickardo-cornelli/testRepo.git";
+        String branchName = "main";
+        String repoURL = "https://github.com/Zaina-ram/testRepo.git";
         try{
             int exitCode = server.handleRequest(branchName, repoURL);
             assertEquals(exitCode, 1, "Expected handleRequest to return 1, got " + exitCode);
@@ -76,7 +76,7 @@ class CIServerTest {
     @Test
     public void testValidURLInvalidBranch(){
         String branchName = "invalidBranch";
-        String repoURL = "https://github.com/rickardo-cornelli/testRepo.git";
+        String repoURL = "https://github.com/Zaina-ram/testRepo.git";
         try{
             int exitCode = server.handleRequest(branchName, repoURL);
             assertEquals(exitCode, 0, "Expected handleRequest to return 0, got " + exitCode);
@@ -97,6 +97,20 @@ class CIServerTest {
         try{
             int exitCode = server.handleRequest(branchName, repoURL);
             assertEquals(exitCode, 0, "Expected handleRequest to return 0, got " + exitCode);
+        }catch(Exception e){
+            fail("Test failed with exception " + e);
+        }
+    }
+
+    @Test
+    public void runTestsForValidURLandBranch(){
+        String branchName = "main";
+        String repoURL = "https://github.com/Zaina-ram/testRepo.git";
+        try{
+            server.handleRequest(branchName, repoURL);
+            int exitCode = server.triggerTesting(branchName);
+            server.deleteDir();
+            assertEquals(exitCode, 1, "Expected handleRequest to return 1, got " + exitCode);
         }catch(Exception e){
             fail("Test failed with exception " + e);
         }

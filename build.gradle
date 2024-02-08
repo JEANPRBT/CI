@@ -5,7 +5,7 @@ plugins {
 
 group = 'se.kth.ci'
 
-//mainClassName = 'se.kth.ci.Main'
+mainClassName = 'se.kth.ci.Main'
 
 repositories {
     mavenCentral()
