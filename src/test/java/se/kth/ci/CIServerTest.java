@@ -68,4 +68,37 @@ class CIServerTest {
             fail("Test failed with exception " + e);
         }
     }
+    /**
+     * Tests that an invalid branch is not cloned for 
+     * a valid URL. Exit code 0 means it fails
+     */
+
+    @Test
+    public void testValidURLInvalidBranch(){
+        String branchName = "invalidBranch";
+        String repoURL = "https://github.com/rickardo-cornelli/testRepo.git";
+        try{
+            int exitCode = server.handleRequest(branchName, repoURL);
+            assertEquals(exitCode, 0, "Expected handleRequest to return 0, got " + exitCode);
+        }catch(Exception e){
+            fail("Test failed with exception " + e);
+        }
+
+    }
+
+    /**
+     * Tests that an invalid repo URL doesn't lead to the cloning of a repo
+     * 
+     */
+    @Test
+    public void testInvalidURL(){
+        String branchName = "invalidBranch";
+        String repoURL = "https://github.com/rickardo-cornelli/invalidRepo.git";
+        try{
+            int exitCode = server.handleRequest(branchName, repoURL);
+            assertEquals(exitCode, 0, "Expected handleRequest to return 0, got " + exitCode);
+        }catch(Exception e){
+            fail("Test failed with exception " + e);
+        }
+    }
 }
