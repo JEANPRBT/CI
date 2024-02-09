@@ -19,32 +19,30 @@ import org.apache.commons.io.FileUtils;
  */
 public final class CIServer {
 
-    public final static String buildDirectory  = "to_build";
-
     /**
      * Public constructor for a CI server.
      *
      * @param port the port number to listen traffic on
-     * @param path String : the endpoint to send webhooks to
+     * @param endpoint String : the endpoint to send webhooks to
      */
-    public CIServer(int port, String path) {
+    public CIServer(int port, String endpoint, String buildDirectory) {
 
         // Set up port to listen on
         port(port);
 
         // ------------------------------- Launching the server ------------------------------- //
-        get(path, (req, res) -> {
+        get(endpoint, (req, res) -> {
             System.out.println("GET request received.");
             return "CI Server for Java Projects with Gradle.";
         });
 
-        post(path, (req, res) -> {
+        post(endpoint, (req, res) -> {
             System.out.println("POST request received.");
             try {
                 String[] parameters = parseResponse(req.body());
-                ErrorCode exitCode = cloneRepository(parameters[1], parameters[0]);
+                ErrorCode exitCode = cloneRepository(parameters[1], parameters[0], buildDirectory);
                 if (exitCode == ErrorCode.SUCCESS) {
-                    exitCode = triggerBuild();
+                    exitCode = triggerBuild(buildDirectory);
                     if (exitCode == ErrorCode.SUCCESS) {
                         System.out.println("Build was successful.");
                     } else {
@@ -71,7 +69,7 @@ public final class CIServer {
      * @param branchName String : branch on which push was made
      * @return ErrorCode : exit code of the operation
      */
-    public ErrorCode cloneRepository(String repoURL, String branchName){
+    public ErrorCode cloneRepository(String repoURL, String branchName, String buildDirectory){
         String[] cloneCommand = new String[]{
                 "git",
                 "clone", repoURL,
@@ -98,7 +96,7 @@ public final class CIServer {
      * Method for triggering the build process for the repository in the `to_build` directory.
      * @return ErrorCode : exit code of the operation
      */
-    public ErrorCode triggerBuild(){
+    public ErrorCode triggerBuild(String buildDirectory){
         File repoDirectory = new File(buildDirectory);
         if (repoDirectory.exists() && repoDirectory.isDirectory()) {
             System.out.println("Directory exists.");
