@@ -115,4 +115,19 @@ class CIServerTest {
             fail("Test failed with exception " + e);
         }
     }
+
+    @Test
+    public void runTestsForInvalidURLandBranch(){
+        // Using an obviously invalid URL and branch name
+        String branchName = "InvalidBranch";
+        String repoURL = "https://github.com/Zaina-ram/invalidtestRepo.git";
+        try{
+            server.handleRequest(branchName, repoURL);
+            int exitCode = server.triggerTesting(branchName);
+            server.deleteDir();
+            assertEquals(exitCode, 0, "Expected handleRequest to return 0 for invalid URL and branch, got " + exitCode);
+        }catch(Exception e){
+            fail("Test failed with exception " + e);
+        }
+    }
 }
