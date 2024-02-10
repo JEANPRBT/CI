@@ -5,5 +5,6 @@ public class Main {
 
         // launch server
         CIServer server = new CIServer(8080, "/");
+        Database mydb = new Database();
     }
 }

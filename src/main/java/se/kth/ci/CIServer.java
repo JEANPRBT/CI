@@ -3,19 +3,16 @@ package se.kth.ci;
 // HTTP server utilities
 import static spark.Spark.*;
 
-// JSON parsing utilities
-import org.json.*;
-
-import java.io.BufferedReader;
 // I/O
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
 // Recursive directory deletion
 import org.apache.commons.io.FileUtils;
+// JSON parsing utilities
+import org.json.JSONObject;
 
 /**
  * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
@@ -36,6 +33,7 @@ public final class CIServer {
         port(port);
 
         // GET requests handler
+        // Modify to get list of build from data base. 
         get(path, (req, res) -> {
             System.out.println("GET request received.");
             return "CI Server for Java Projects with Gradle.";
