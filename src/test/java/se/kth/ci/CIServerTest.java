@@ -1,22 +1,28 @@
 package se.kth.ci;
 
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Objects;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import java.util.Arrays;
-import static org.junit.jupiter.api.Assertions.*;
 
 
 class CIServerTest {
 
     private static CIServer server;
+    private static final String buildDirectory = "test_build";
 
     /**
      * Start the server properly before the tests
      */
     @BeforeAll
     static void startServer() {
-        server = new CIServer(8080, "/");
+        server = new CIServer(8080, "/", buildDirectory);
     }
 
     /**
@@ -26,6 +32,16 @@ class CIServerTest {
     static void stopServer() {
         spark.Spark.stop();
     }
+
+    @AfterAll
+    static void deleteBuildDirectory() {
+        try {
+            FileUtils.deleteDirectory(new File(buildDirectory));
+        } catch (IOException e) {
+            System.err.println("Error while deleting build directory.");
+        }
+    }
+
     /**
      * Test for method `parseResponse`.
      * Checks that it extracts good information from JSON String.
@@ -43,91 +59,82 @@ class CIServerTest {
 
     /**
      * Test for method `parseResponse`.
-     * Checks that it cannot parse a non-JSON string;
+     * Checks that it cannot parse a non-JSON string.
      */
     @Test
     public void parseResponseThrows(){
         String notJson = "This is not a JSON string.";
-        assertThrows(org.json.JSONException.class, () -> {
-            server.parseResponse(notJson);
-        }, "Method parsed a non-JSON string.");
+        assertThrows(org.json.JSONException.class, () -> server.parseResponse(notJson),
+                "Method parsed a non-JSON string.");
     }
 
     /**
-     * Test handling requests, verify that repo is cloned.
-     * Note: verify that everything is deleted in to_build
+     * Test for method `handleRequest`
+     * Checks that valid repo is cloned correctly on good branch, method should return SUCCESS.
      */
     @Test
-    public void testValidURLandBranch(){
-        String branchName = "main";
-        String repoURL = "https://github.com/Zaina-ram/testRepo.git";
-        try{
-            int exitCode = server.handleRequest(branchName, repoURL);
-            assertEquals(exitCode, 1, "Expected handleRequest to return 1, got " + exitCode);
-        }catch(Exception e){
-            fail("Test failed with exception " + e);
-        }
+    public void cloneValidURLandBranch(){
+        String branchName = "turtles2";
+        String repoURL = "https://github.com/rickardo-cornelli/testRepo.git";
+        ErrorCode exitCode = server.cloneRepository(repoURL, branchName, buildDirectory);
+        assertEquals(ErrorCode.SUCCESS, exitCode, "A valid repository was not cloned successfully.");
     }
-    /**
-     * Tests that an invalid branch is not cloned for 
-     * a valid URL. Exit code 0 means it fails
-     */
 
+    /**
+     * Test for method `handleRequest`
+     * Checks that valid repo is not cloned on invalid branch, method should return ERROR_CLONE.
+     */
     @Test
-    public void testValidURLInvalidBranch(){
+    public void cloneValidURLInvalidBranch(){
         String branchName = "invalidBranch";
-        String repoURL = "https://github.com/Zaina-ram/testRepo.git";
-        try{
-            int exitCode = server.handleRequest(branchName, repoURL);
-            assertEquals(exitCode, 0, "Expected handleRequest to return 0, got " + exitCode);
-        }catch(Exception e){
-            fail("Test failed with exception " + e);
-        }
-
+        String repoURL = "https://github.com/rickardo-cornelli/testRepo.git";
+        ErrorCode exitCode = server.cloneRepository(repoURL, branchName, buildDirectory);
+        assertEquals(ErrorCode.ERROR_CLONE, exitCode, "An invalid repository was cloned.");
     }
 
     /**
-     * Tests that an invalid repo URL doesn't lead to the cloning of a repo
-     * 
+     * Test for method `handleRequest`
+     * Checks that invalid repo is not cloned, method should return ERROR_CLONE.
      */
     @Test
-    public void testInvalidURL(){
+    public void cloneInvalidURL(){
         String branchName = "invalidBranch";
         String repoURL = "https://github.com/rickardo-cornelli/invalidRepo.git";
-        try{
-            int exitCode = server.handleRequest(branchName, repoURL);
-            assertEquals(exitCode, 0, "Expected handleRequest to return 0, got " + exitCode);
-        }catch(Exception e){
-            fail("Test failed with exception " + e);
-        }
+        ErrorCode exitCode = server.cloneRepository(repoURL, branchName, buildDirectory);
+        assertEquals(ErrorCode.ERROR_CLONE, exitCode, "An invalid repository was cloned.");
     }
 
+    /**
+     * Test for method `triggerBuild`
+     * Checks that when an invalid build is triggered the method returns ERROR_BUILD.
+     */
     @Test
-    public void runTestsForValidURLandBranch(){
-        String branchName = "main";
-        String repoURL = "https://github.com/Zaina-ram/testRepo.git";
-        try{
-            server.handleRequest(branchName, repoURL);
-            int exitCode = server.triggerTesting(branchName);
-            server.deleteDir();
-            assertEquals(exitCode, 1, "Expected handleRequest to return 1, got " + exitCode);
-        }catch(Exception e){
-            fail("Test failed with exception " + e);
+    public void triggerInvalidBuild(){
+        ClassLoader classLoader = getClass().getClassLoader();
+        try {
+            String filePath = Objects.requireNonNull(classLoader.getResource("invalid_build_test")).getFile();
+            ErrorCode exitCodeBuild = server.triggerBuild(filePath);
+            assertEquals(ErrorCode.ERROR_BUILD, exitCodeBuild, "An invalid build was successful.");
+        } catch (NullPointerException e){
+            System.err.println("Error while getting file path.");
         }
+
     }
 
+    /**
+     * Test for method `triggerBuild`
+     * Checks that when a valid build is triggered the method returns SUCCESS.
+     */
     @Test
-    public void runTestsForInvalidURLandBranch(){
-        // Using an obviously invalid URL and branch name
-        String branchName = "InvalidBranch";
-        String repoURL = "https://github.com/Zaina-ram/invalidtestRepo.git";
-        try{
-            server.handleRequest(branchName, repoURL);
-            int exitCode = server.triggerTesting(branchName);
-            server.deleteDir();
-            assertEquals(exitCode, 0, "Expected handleRequest to return 0 for invalid URL and branch, got " + exitCode);
-        }catch(Exception e){
-            fail("Test failed with exception " + e);
+    public void triggerValidBuild(){
+        ClassLoader classLoader = getClass().getClassLoader();
+        try {
+            String filePath = Objects.requireNonNull(classLoader.getResource("valid_build_test")).getFile();
+            ErrorCode exitCodeBuild = server.triggerBuild(filePath);
+            assertEquals(ErrorCode.SUCCESS, exitCodeBuild, "A valid build was not successful.");
+        } catch (NullPointerException e){
+            System.err.println("Error while getting file path.");
         }
+
     }
 }

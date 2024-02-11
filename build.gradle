@@ -5,15 +5,17 @@ plugins {
 
 group = 'se.kth.ci'
 
-mainClassName = 'se.kth.ci.Main'
+application {
+    mainClass = 'se.kth.ci.Main'
+}
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    testImplementation platform('org.junit:junit-bom:5.9.1')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation 'com.sparkjava:spark-core:2.9.4'
     implementation 'org.slf4j:slf4j-nop:2.0.11'
     implementation 'org.json:json:20231013'
