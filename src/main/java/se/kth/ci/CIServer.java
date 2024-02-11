@@ -129,7 +129,7 @@ public final class CIServer {
             File testDir = new File(testDirectory);
             if (testDir.exists() && testDir.isDirectory()){
                 System.out.println("Test directory exists, running tests.");
-                String[] testCommand = new String[]{"./gradlew",  "test","--scan"};
+                String[] testCommand = new String[]{"./gradlew",  "test"};
                 try {
                     Process testProcess = Runtime.getRuntime().exec(testCommand, null, testDir);
                     int testExitCode = testProcess.waitFor();
