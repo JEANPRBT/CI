@@ -164,13 +164,9 @@ class CIServerTest {
     public void triggerValidTests(){
         String branchName = "main";
         ClassLoader classLoader = getClass().getClassLoader();
-        try {
-            String filePath = Objects.requireNonNull(classLoader.getResource("trigger_valid_tests")).getFile();
-            ErrorCode exitCodeTest = server.triggerTesting(branchName,filePath);
-            assertEquals(ErrorCode.SUCCESS, exitCodeTest, "Testing for valid tests failed");
-        } catch (NullPointerException e){
-            System.err.println("Error while getting file path.");
-        }
+        String filePath = Objects.requireNonNull(classLoader.getResource("second_valid_tests")).getFile();
+        ErrorCode exitCodeTest = server.triggerTesting(branchName,filePath);
+        assertEquals(ErrorCode.SUCCESS, exitCodeTest, "Testing for valid tests failed");
 
     }
 
@@ -183,7 +179,7 @@ class CIServerTest {
         String branchName = "main";
         ClassLoader classLoader = getClass().getClassLoader();
         try {
-            String filePath = Objects.requireNonNull(classLoader.getResource("trigger_invalid_tests")).getFile();
+            String filePath = Objects.requireNonNull(classLoader.getResource("second_invalid_tests")).getFile();
             ErrorCode exitCodeTest = server.triggerTesting(branchName,filePath);
             assertEquals(ErrorCode.ERROR_TEST, exitCodeTest, "Testing for invalid tests was successful");
         } catch (NullPointerException e){
