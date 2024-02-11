@@ -23,6 +23,10 @@ dependencies {
 }
 
 test {
+    testLogging {
+        // Show standard out and standard error of the test execution on the console
+        showStandardStreams = true
+    }
     useJUnitPlatform()
 }
 
