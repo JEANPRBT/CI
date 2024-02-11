@@ -48,7 +48,7 @@ public final class CIServer {
                     } else {
                         System.out.println("Build failed.");
                     }
-                    FileUtils.deleteDirectory(new File(buildDirectory));
+                    FileUtils.deleteDirectory(new File("buildDirectory"));
                     System.out.println("Build directory deleted.");
                 }
             } catch (org.json.JSONException e) {

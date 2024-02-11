@@ -10,7 +10,7 @@ class CIServerTest {
     private static Add res;
 
 
-
+    
 
     @Test
     public void posTest(){
