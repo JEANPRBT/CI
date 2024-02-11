@@ -7,7 +7,6 @@ import static spark.Spark.*;
 import java.io.File;
 import java.io.IOException;
 
-// Recursive directory deletion
 import org.apache.commons.io.FileUtils;
 // JSON parsing utilities
 import org.json.JSONObject;
@@ -44,6 +43,8 @@ public final class CIServer {
                     exitCode = triggerBuild(buildDirectory);
                     if (exitCode == ErrorCode.SUCCESS) {
                         System.out.println("Build was successful.");
+                        System.out.println("Running tests..");
+                        triggerTesting(parameters[0], buildDirectory);
                     } else {
                         System.out.println("Build failed.");
                     }
@@ -99,7 +100,7 @@ public final class CIServer {
         File repoDirectory = new File(buildDirectory);
         if (repoDirectory.exists() && repoDirectory.isDirectory()) {
             System.out.println("Directory exists.");
-            String[] buildCommand = new String[]{"./gradlew",  "build", "testClasses", "-x", "test"};
+            String[] buildCommand = new String[]{"./gradlew.bat",  "build", "testClasses", "-x", "test"};
             try {
                 Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
                 int buildExitCode = buildProcess.waitFor();
@@ -119,6 +120,44 @@ public final class CIServer {
             return ErrorCode.ERROR_FILE;
         }
     }
+
+    /**
+     * Method for running Junit tests.  
+     * 
+     */
+    public ErrorCode triggerTesting(String branchName, String testDirectory) {   
+
+        File isTestDirExist = new File(testDirectory + "/src/test");
+        if (!isTestDirExist.exists()) {
+            System.out.println("Project does not contain tests.");
+            return ErrorCode.NO_TESTS;
+        }
+        else{
+            File testDir = new File(testDirectory);
+            if (testDir.exists() && testDir.isDirectory()){
+                System.out.println("Test directory exists, running tests.");
+                String[] testCommand = new String[]{"./gradlew.bat",  "test"};
+                try {
+                    Process testProcess = Runtime.getRuntime().exec(testCommand, null, testDir);
+                    int testExitCode = testProcess.waitFor();
+                    if (testExitCode == 0) {
+                        System.out.println("tests for branch " + branchName + " succeeded.");
+                        return ErrorCode.SUCCESS;
+                    } else {
+                        System.err.println("tests for branch " + branchName + " failed. Exit code: " + testExitCode);
+                        return ErrorCode.ERROR_TEST;
+                    }
+                } catch (IOException | InterruptedException e) {
+                    System.err.println("Error running shell commands " + e.getMessage());
+                    return ErrorCode.ERROR_IO;
+                }
+                
+            }
+            return ErrorCode.ERROR_IO;
+        }
+    }
+
+    
 
     /**
      * Method for parsing JSON response from GitHub webhook into relevant

@@ -137,4 +137,61 @@ class CIServerTest {
         }
 
     }
+
+    /**
+     * Test for method `triggerTesting`
+     * Checks that when a project does not contain tests, the method returns NO_TESTS 
+     */
+    @Test
+    public void repoWithoutTests(){
+        String branchName = "main";
+        ClassLoader classLoader = getClass().getClassLoader();
+        try {
+            String filePath = Objects.requireNonNull(classLoader.getResource("valid_build_test")).getFile();
+            System.out.println(filePath);
+            ErrorCode exitCodeBuild = server.triggerTesting(branchName,filePath);
+            assertEquals(ErrorCode.NO_TESTS, exitCodeBuild, "Testing for a project without tests was triggered");
+        } catch (NullPointerException e){
+            System.err.println("Error while getting file path.");
+        }
+
+    }
+
+    /**
+     * Test for method `triggerTesting`
+     * Checks that when a project has valid tests, the method returns SUCCESS
+     */
+    @Test
+    public void triggerValidTests(){
+        String branchName = "main";
+        ClassLoader classLoader = getClass().getClassLoader();
+        try {
+            String filePath = Objects.requireNonNull(classLoader.getResource("trigger_valid_tests")).getFile();
+            System.out.println(filePath);
+            ErrorCode exitCodeBuild = server.triggerTesting(branchName,filePath);
+            assertEquals(ErrorCode.SUCCESS, exitCodeBuild, "Testing for valid tests failed");
+        } catch (NullPointerException e){
+            System.err.println("Error while getting file path.");
+        }
+
+    }
+
+    /**
+     * Test for method `triggerTesting`
+     * Checks that when a project has invalid tests, the method returns ERROR_TEST
+     */
+    @Test
+    public void triggerInvalidTests(){
+        String branchName = "main";
+        ClassLoader classLoader = getClass().getClassLoader();
+        try {
+            String filePath = Objects.requireNonNull(classLoader.getResource("trigger_invalid_tests")).getFile();
+            System.out.println(filePath);
+            ErrorCode exitCodeBuild = server.triggerTesting(branchName,filePath);
+            assertEquals(ErrorCode.ERROR_TEST, exitCodeBuild, "Testing for invalid tests was successful");
+        } catch (NullPointerException e){
+            System.err.println("Error while getting file path.");
+        }
+
+    }
 }
