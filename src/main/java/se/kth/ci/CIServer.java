@@ -100,7 +100,7 @@ public final class CIServer {
         File repoDirectory = new File(buildDirectory);
         if (repoDirectory.exists() && repoDirectory.isDirectory()) {
             System.out.println("Directory exists.");
-            String[] buildCommand = new String[]{"./gradlew",  "build", "testClasses", "-x", "test"};
+            String[] buildCommand = new String[]{"./gradlew.bat",  "build", "testClasses", "-x", "test"};
             try {
                 Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
                 int buildExitCode = buildProcess.waitFor();
@@ -126,17 +126,10 @@ public final class CIServer {
      * 
      */
     public ErrorCode triggerTesting(String branchName, String testDirectory) {   
-
-        File isTestDirExist = new File(testDirectory + "/src/test");
-        if (!isTestDirExist.exists()) {
-            System.out.println("Project does not contain tests.");
-            return ErrorCode.NO_TESTS;
-        }
-        else{
             File testDir = new File(testDirectory);
             if (testDir.exists() && testDir.isDirectory()){
                 System.out.println("Test directory exists, running tests.");
-                String[] testCommand = new String[]{"./gradlew",  "test"};
+                String[] testCommand = new String[]{"./gradlew.bat",  "test"};
                 try {
                     Process testProcess = Runtime.getRuntime().exec(testCommand, null, testDir);
                     int testExitCode = testProcess.waitFor();
@@ -154,7 +147,7 @@ public final class CIServer {
                 
             }
             return ErrorCode.ERROR_IO;
-        }
+        
     }
 
     

@@ -148,9 +148,8 @@ class CIServerTest {
         ClassLoader classLoader = getClass().getClassLoader();
         try {
             String filePath = Objects.requireNonNull(classLoader.getResource("valid_build_test")).getFile();
-            System.out.println(filePath);
-            ErrorCode exitCodeBuild = server.triggerTesting(branchName,filePath);
-            assertEquals(ErrorCode.NO_TESTS, exitCodeBuild, "Testing for a project without tests was triggered");
+            ErrorCode exitCodeTest = server.triggerTesting(branchName,filePath);
+            assertEquals(ErrorCode.SUCCESS, exitCodeTest, "Testing for a project without tests failed");
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
         }
@@ -167,9 +166,8 @@ class CIServerTest {
         ClassLoader classLoader = getClass().getClassLoader();
         try {
             String filePath = Objects.requireNonNull(classLoader.getResource("trigger_valid_tests")).getFile();
-            System.out.println(filePath);
-            ErrorCode exitCodeBuild = server.triggerTesting(branchName,filePath);
-            assertEquals(ErrorCode.SUCCESS, exitCodeBuild, "Testing for valid tests failed");
+            ErrorCode exitCodeTest = server.triggerTesting(branchName,filePath);
+            assertEquals(ErrorCode.SUCCESS, exitCodeTest, "Testing for valid tests failed");
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
         }
@@ -186,9 +184,8 @@ class CIServerTest {
         ClassLoader classLoader = getClass().getClassLoader();
         try {
             String filePath = Objects.requireNonNull(classLoader.getResource("trigger_invalid_tests")).getFile();
-            System.out.println(filePath);
-            ErrorCode exitCodeBuild = server.triggerTesting(branchName,filePath);
-            assertEquals(ErrorCode.ERROR_TEST, exitCodeBuild, "Testing for invalid tests was successful");
+            ErrorCode exitCodeTest = server.triggerTesting(branchName,filePath);
+            assertEquals(ErrorCode.ERROR_TEST, exitCodeTest, "Testing for invalid tests was successful");
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
         }
