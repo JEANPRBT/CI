@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
@@ -47,8 +49,8 @@ class CIServerTest {
      */
     @Test
     public void parseResponsePositiveTest(){
-        String json = "{\"ref\":\"refs/heads/testing_value_ref\", \"repository\": {\"url\": \"https://testing_value_url\"}}";
-        String[] expected = new String[]{"testing_value_ref", "https://testing_value_url"};
+        String json = "{\"ref\":\"refs/heads/testing_value_ref\", \"repository\": {\"url\": \"https://testing_value_url\",\"head_commit\": {\"url\": \"https://testing_value_url/123\",\"head_commit\": {\"timestamp\": \"2024-02-12T10:17:49+01:00\"}}";
+        String[] expected = new String[]{"testing_value_ref", "https://testing_value_url","123", "024-02-12T10:17:49+01:00"};
         try {
             assertArrayEquals(expected, server.parseResponse(json), "JSON string was not parsed correctly.");
         } catch (org.json.JSONException e){
@@ -66,6 +68,8 @@ class CIServerTest {
         assertThrows(org.json.JSONException.class, () -> server.parseResponse(notJson),
                 "Method parsed a non-JSON string.");
     }
+
+  
 
     /**
      * Test for method `handleRequest`
@@ -123,7 +127,7 @@ class CIServerTest {
     /**
      * Test for method `triggerBuild`
      * Checks that when a valid build is triggered the method returns SUCCESS.
-     
+    
     @Test
     public void triggerValidBuild(){
         ClassLoader classLoader = getClass().getClassLoader();
@@ -135,5 +139,28 @@ class CIServerTest {
             System.err.println("Error while getting file path.");
         }
 
-    }*/
+    }
+    */
+    /**
+     * Checks that query to database returns expected results. 
+     * @throws IOException
+     */
+
+    @Test
+    public void getDataFromDatabase() throws IOException{
+        Database mydb = new Database(); 
+        mydb.getConnection();
+        String commitId = "3525b1231d11f9712740e28f3e4f5df6b79425bb";
+        String timestamp = "2024-02-12 23:01:36";
+        String buildLog; 
+        byte[] bytes = Files.readAllBytes(Paths.get("build.log"));
+        buildLog = new String(bytes);
+        String[] buildInfo = server.getBuildInfoByCommitId(commitId);
+        assertEquals(commitId, buildInfo[0], "Commit_id doesn't match");
+        assertEquals(timestamp, buildInfo[1], "timestamp doesn't match");
+        assertEquals(buildLog, buildInfo[2], "build log doesn't match");
+    }
+
+
+
 }

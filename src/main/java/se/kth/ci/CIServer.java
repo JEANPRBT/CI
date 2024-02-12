@@ -1,9 +1,7 @@
 package se.kth.ci;
 
 // HTTP server utilities
-import static spark.Spark.get;
-import static spark.Spark.port;
-import static spark.Spark.post;
+import static spark.Spark.*;
 
 // I/O
 import java.io.BufferedReader;
@@ -15,9 +13,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+//db
 import java.sql.ResultSet;
 import java.sql.SQLException;
-//db
 import java.sql.Statement;
 // library for timestamp
 import java.time.LocalDateTime;
@@ -31,6 +29,7 @@ import java.util.regex.Pattern;
 import org.apache.commons.io.FileUtils;
 // JSON parsing utilities
 import org.json.JSONObject;
+
 
 /**
  * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
@@ -102,7 +101,7 @@ public final class CIServer {
         });
         get("/builds", (req, res) -> {
             // Get build info for all commits
-            List<String[]> allBuilds = mydb.getAllBuilds(); // Assuming mydb is accessible here and has a method getAllBuilds
+            List<String[]> allBuilds = mydb.getAllBuilds(); 
             StringBuilder html = new StringBuilder("""
                 <!DOCTYPE html>
                 <html>
@@ -162,13 +161,10 @@ public final class CIServer {
                     FileUtils.deleteDirectory(new File(buildDirectory));
                     System.out.println("Build directory deleted.");
                 }
-                String[] allBuildInfoExceptLog = getBuildInfo(req.body());
                 String buildLog = readLogFileToString("build.log");
                 System.out.println(buildLog);
-                // kalla på databasen
-
                 // allBuildInfo returns {commitID, timeStamp}
-                mydb.insertBuild(mydb.getConnection(), allBuildInfoExceptLog[0], allBuildInfoExceptLog[1], buildLog);
+                mydb.insertBuild(mydb.getConnection(), parameters[2], parameters[3], buildLog);
             } catch (org.json.JSONException e) {
                 System.out.println("Error while parsing JSON. \n" + e.getMessage());
             } catch (IOException e) {
@@ -281,25 +277,12 @@ public final class CIServer {
      * Method for parsing JSON response from GitHub webhook into relevant
      * parameters for triggering build process.
      * @param response String : the request body to be parsed
-     * @return String[] : an array containing the branch name and the repository URL
+     * @return String[] : an array containing the branch name,repository URL, commit_id and timestamp
      */
     public String[] parseResponse(String response) throws org.json.JSONException{
         JSONObject obj = new JSONObject(response);
         String branch = obj.getString("ref").substring("refs/heads/".length());
         String repoURL = obj.getJSONObject("repository").getString("url");
-        return new String[]{branch, repoURL};
-    }
-
-
-    /**
-     * primary key: commit id: 
-     * build date
-     * build logs
-     */
-    public String[] getBuildInfo(String response){
-        
-        JSONObject obj = new JSONObject(response);
-        // Commit id can be found in url: linkToRepo/commit/commitID
         String url = obj.getJSONObject("head_commit").getString("url");
 
         // Define a regular expression pattern to extract the hash from the URL
@@ -309,38 +292,38 @@ public final class CIServer {
         if (matcher.find()) {
             commitID = matcher.group(1);
         }
-
         LocalDateTime currentDateTime = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String timestamp = currentDateTime.format(formatter);
-    
-        return new String[]{commitID, timestamp};
+        
+        return new String[]{branch, repoURL, commitID, timestamp};
     }
+
     /**
      * Get the build info for a specific commit
      * @param commitId
      * @return buildInfo, an array {commit_id, build_date, build_logs}
      */
-    private String[] getBuildInfoByCommitId(String commitId) {
-    String sql = "SELECT * FROM build_history WHERE commit_id = '" + commitId + "'";
-    try (Statement stmt = mydb.getConnection().createStatement()){
-        System.out.println("Trying to get build info for " + commitId);
-        // Execute the query and obtain the result set
-        ResultSet rs = stmt.executeQuery(sql);
-        
-        // Process the result set
-        if (rs.next()) {
-            String[] buildInfo = new String[3];
-            buildInfo[0] = rs.getString("commit_id"); // Commit ID
-            buildInfo[1] = rs.getString("build_date"); // Build Date
-            buildInfo[2] = rs.getString("build_logs"); // Build Logs
-            return buildInfo;
+    public String[] getBuildInfoByCommitId(String commitId) {
+        String sql = "SELECT * FROM build_history WHERE commit_id = '" + commitId + "'";
+        try (Statement stmt = mydb.getConnection().createStatement()){
+            System.out.println("Trying to get build info for " + commitId);
+            // Execute the query and obtain the result set
+            ResultSet rs = stmt.executeQuery(sql);
+            
+            // Process the result set
+            if (rs.next()) {
+                String[] buildInfo = new String[3];
+                buildInfo[0] = rs.getString("commit_id"); // Commit ID
+                buildInfo[1] = rs.getString("build_date"); // Build Date
+                buildInfo[2] = rs.getString("build_logs"); // Build Logs
+                return buildInfo;
+            }
+            System.out.println();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
-        System.out.println();
-    } catch (SQLException e) {
-        e.printStackTrace();
+            return null; // Return null if no build information was found
     }
-    return null; // Return null if no build information was found
-}
 
 }
