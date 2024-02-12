@@ -6,11 +6,17 @@ import static spark.Spark.*;
 // I/O
 import java.io.File;
 import java.io.IOException;
+// library for timestamp
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 // Recursive directory deletion
 import org.apache.commons.io.FileUtils;
 // JSON parsing utilities
 import org.json.JSONObject;
+
 
 /**
  * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
@@ -38,7 +44,9 @@ public final class CIServer {
         post(endpoint, (req, res) -> {
             System.out.println("POST request received.");
             try {
+             //   System.out.println("this is the request: " + req.body());
                 String[] parameters = parseResponse(req.body());
+                getBuildInfo(req.body());
                 ErrorCode exitCode = cloneRepository(parameters[1], parameters[0], buildDirectory);
                 if (exitCode == ErrorCode.SUCCESS) {
                     exitCode = triggerBuild(buildDirectory);
@@ -99,7 +107,7 @@ public final class CIServer {
         File repoDirectory = new File(buildDirectory);
         if (repoDirectory.exists() && repoDirectory.isDirectory()) {
             System.out.println("Directory exists.");
-            String[] buildCommand = new String[]{"./gradlew",  "build", "testClasses", "-x", "test"};
+            String[] buildCommand = new String[]{"./gradlew.bat",  "build", "testClasses", "-x", "test"};
             try {
                 Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
                 int buildExitCode = buildProcess.waitFor();
@@ -131,5 +139,33 @@ public final class CIServer {
         String branch = obj.getString("ref").substring("refs/heads/".length());
         String repoURL = obj.getJSONObject("repository").getString("url");
         return new String[]{branch, repoURL};
+    }
+
+
+    /**
+     * primary key 
+     * commit id: 
+     * build date
+     * build logs 
+     * "url":"https://github.com/Zaina-ram/testRepo/commit/e7f562a1a826629323e95b2bcb8d5aa33cef565b"
+     */
+    public String[] getBuildInfo(String response){
+        JSONObject obj = new JSONObject(response);
+        // Commit id can be found in url: linkToRepo/commit/commitID
+        //String url = obj.getString("url");
+        String url = obj.getJSONObject("head_commit").getString("url");
+        // Define a regular expression pattern to extract the hash from the URL
+        Pattern pattern = Pattern.compile("/commit/([a-fA-F0-9]+)");
+        Matcher matcher = pattern.matcher(url);
+        String commitID = matcher.group(1);
+
+        LocalDateTime currentDateTime = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String timestamp = currentDateTime.format(formatter);
+        
+        System.out.println("\n timestamp:" + timestamp);
+        System.out.println("\n commitID är: " + commitID);
+
+        return new String[]{commitID, timestamp, };
     }
 }
