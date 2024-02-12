@@ -2,7 +2,7 @@ package se.kth.ci;
 
 /**
  * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
- * Class representing our CI server which handles all incoming webhooks using HTTP methods.
+ * Class representing the error codes that can be returned by the CI server.
  */
 public enum ErrorCode {
     // An error occurred while running shell commands
@@ -20,8 +20,9 @@ public enum ErrorCode {
     // An error occurred while running the project tests
     ERROR_TEST,
 
+    // The project does not contain any tests
     NO_TESTS,
 
-    // The build was successful
+    // The method was successful
     SUCCESS
 }

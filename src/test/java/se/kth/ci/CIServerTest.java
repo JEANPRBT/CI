@@ -33,6 +33,9 @@ class CIServerTest {
         spark.Spark.stop();
     }
 
+    /**
+     * Delete the build directory after all tests are done
+     */
     @AfterAll
     static void deleteBuildDirectory() {
         try {
@@ -49,7 +52,7 @@ class CIServerTest {
     @Test
     public void parseResponsePositiveTest(){
         String json = "{\"ref\":\"refs/heads/testing_value_ref\", \"repository\": {\"url\": \"https://testing_value_url\"}}";
-        String[] expected = new String[]{"testing_value_ref", "https://testing_value_url"};
+        String[] expected = new String[]{"https://testing_value_url", "testing_value_ref"};
         try {
             assertArrayEquals(expected, server.parseResponse(json), "JSON string was not parsed correctly.");
         } catch (org.json.JSONException e){
@@ -112,7 +115,7 @@ class CIServerTest {
     public void triggerInvalidBuild(){
         ClassLoader classLoader = getClass().getClassLoader();
         try {
-            String filePath = Objects.requireNonNull(classLoader.getResource("invalid_build_test")).getFile();
+            String filePath = Objects.requireNonNull(classLoader.getResource("invalid_build")).getFile();
             ErrorCode exitCodeBuild = server.triggerBuild(filePath);
             assertEquals(ErrorCode.ERROR_BUILD, exitCodeBuild, "An invalid build was successful.");
         } catch (NullPointerException e){
@@ -129,7 +132,7 @@ class CIServerTest {
     public void triggerValidBuild(){
         ClassLoader classLoader = getClass().getClassLoader();
         try {
-            String filePath = Objects.requireNonNull(classLoader.getResource("valid_build_test")).getFile();
+            String filePath = Objects.requireNonNull(classLoader.getResource("valid_build")).getFile();
             ErrorCode exitCodeBuild = server.triggerBuild(filePath);
             assertEquals(ErrorCode.SUCCESS, exitCodeBuild, "A valid build was not successful.");
         } catch (NullPointerException e){
@@ -144,12 +147,11 @@ class CIServerTest {
      */
     @Test
     public void repoWithoutTests(){
-        String branchName = "main";
         ClassLoader classLoader = getClass().getClassLoader();
         try {
-            String filePath = Objects.requireNonNull(classLoader.getResource("valid_build_test")).getFile();
-            ErrorCode exitCodeTest = server.triggerTesting(branchName,filePath);
-            assertEquals(ErrorCode.SUCCESS, exitCodeTest, "Testing for a project without tests failed");
+            String filePath = Objects.requireNonNull(classLoader.getResource("valid_build")).getFile();
+            ErrorCode exitCodeTest = server.triggerTesting(filePath);
+            assertEquals(ErrorCode.NO_TESTS, exitCodeTest, "Testing for a project without tests was triggered.");
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
         }
@@ -162,11 +164,10 @@ class CIServerTest {
      */
     @Test
     public void triggerValidTests(){
-        String branchName = "main";
         ClassLoader classLoader = getClass().getClassLoader();
-        String filePath = Objects.requireNonNull(classLoader.getResource("second_valid_tests")).getFile();
-        ErrorCode exitCodeTest = server.triggerTesting(branchName,filePath);
-        assertEquals(ErrorCode.SUCCESS, exitCodeTest, "Testing for valid tests failed");
+        String filePath = Objects.requireNonNull(classLoader.getResource("valid_tests")).getFile();
+        ErrorCode exitCodeTest = server.triggerTesting(filePath);
+        assertEquals(ErrorCode.SUCCESS, exitCodeTest, "Testing for valid tests failed.");
 
     }
 
@@ -176,15 +177,13 @@ class CIServerTest {
      */
     @Test
     public void triggerInvalidTests(){
-        String branchName = "main";
         ClassLoader classLoader = getClass().getClassLoader();
         try {
-            String filePath = Objects.requireNonNull(classLoader.getResource("second_invalid_tests")).getFile();
-            ErrorCode exitCodeTest = server.triggerTesting(branchName,filePath);
-            assertEquals(ErrorCode.ERROR_TEST, exitCodeTest, "Testing for invalid tests was successful");
+            String filePath = Objects.requireNonNull(classLoader.getResource("invalid_tests")).getFile();
+            ErrorCode exitCodeTest = server.triggerTesting(filePath);
+            assertEquals(ErrorCode.ERROR_TEST, exitCodeTest, "Testing for invalid tests was successful.");
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
         }
-
     }
 }
