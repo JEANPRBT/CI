@@ -9,9 +9,16 @@ import org.json.*;
 // I/O
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+
+import org.kohsuke.github.*;
 
 // Recursive directory deletion
 import org.apache.commons.io.FileUtils;
+
+import javax.script.*;
 
 /**
  * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
@@ -118,6 +125,47 @@ public final class CIServer {
         } else {
             System.err.println("Repository directory does not exist: " + buildDirectory);
             return ErrorCode.ERROR_FILE;
+        }
+    }
+
+    ErrorCode setCommitStatus(ErrorCode code){
+        String token = "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", //
+               owner = "Lola20b", //
+               repo = "dh2642_project", //
+               sha = "409a1817ca2a06655b2f3775dff1250163ddeafa";
+        String state = code == ErrorCode.SUCCESS ? "success" : "failure";
+        String mes = "'{\"state\":\"" + state + "\",\"description\":\"Test\"}'";
+
+        String url = "https://api.github.com/repos/" + owner + "/" + repo + "/statuses/" + sha;
+        System.out.println(url);
+        String[] command = new String[] {"curl", "-Li",
+            "-X", "POST",
+            "-H", "\"Accept:", "application/vnd.github+json\"",
+            "-H", "\"Authorization:", "Bearer", token, "\"",
+            "-H", "\"X-GitHub-Api-Version:", "2022-11-28\"",
+            url,
+            "-d", mes};
+
+        try {
+            Process process = Runtime.getRuntime().exec(command);
+            byte[] b = new byte[10];
+            InputStream inputStream = process.getInputStream();
+            
+            int cloneExitCode = process.waitFor();
+            int read = inputStream.read(b);
+            String s = new String(b, StandardCharsets.UTF_8);
+            System.out.println(s);
+            if (cloneExitCode == 0) {
+                System.out.println("Curl process run");
+                return ErrorCode.SUCCESS;
+            } else {
+                System.err.println("Failed tp run curl. Exit code: " + cloneExitCode);
+                return ErrorCode.ERROR_CLONE;
+            }
+        } catch (IOException | InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return ErrorCode.ERROR_IO;
         }
     }
 

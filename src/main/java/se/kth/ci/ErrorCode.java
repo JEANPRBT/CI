@@ -17,6 +17,9 @@ public enum ErrorCode {
     // An error occurred while building the project
     ERROR_BUILD,
 
+    // An error occured while setting commit status
+    ERROR_STATUS,
+
     // The build was successful
     SUCCESS
 }

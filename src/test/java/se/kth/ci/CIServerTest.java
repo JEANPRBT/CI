@@ -137,4 +137,14 @@ class CIServerTest {
         }
 
     }
+
+    @Test
+    public void statusValidCommit(){
+        try {
+            ErrorCode expectedCode = server.setCommitStatus(ErrorCode.SUCCESS);
+            assertEquals(ErrorCode.SUCCESS, expectedCode);
+        } catch (NullPointerException e){
+            System.err.println("Error while getting file path.");
+        }
+    }
 }
