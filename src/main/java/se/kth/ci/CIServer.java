@@ -49,6 +49,7 @@ public final class CIServer {
 
         // Set up port to listen on
         port(port);
+        mydb = new Database();
 
 
         // ------------------------------- Launching the server ------------------------------- //
@@ -83,7 +84,6 @@ public final class CIServer {
             try {
              //   System.out.println("this is the request: " + req.body());
                 String[] parameters = parseResponse(req.body());
-                getBuildInfo(req.body());
                 ErrorCode exitCode = cloneRepository(parameters[1], parameters[0], buildDirectory);
                 if (exitCode == ErrorCode.SUCCESS) {
                     exitCode = triggerBuild(buildDirectory);
@@ -99,7 +99,7 @@ public final class CIServer {
                 String buildLog = readLogFileToString("build.log");
                 System.out.println(buildLog);
                 // kalla på databasen
-                mydb = new Database();
+
                 // allBuildInfo returns {commitID, timeStamp}
                 mydb.insertBuild(mydb.getConnection(), allBuildInfoExceptLog[0], allBuildInfoExceptLog[1], buildLog);
             } catch (org.json.JSONException e) {
@@ -258,7 +258,7 @@ public final class CIServer {
             buildInfo[2] = rs.getString("build_logs"); // Build Logs
             return buildInfo;
         }
-        
+        System.out.println();
     } catch (SQLException e) {
         e.printStackTrace();
     }
