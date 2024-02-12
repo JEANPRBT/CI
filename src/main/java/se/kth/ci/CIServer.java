@@ -3,15 +3,13 @@ package se.kth.ci;
 // HTTP server utilities
 import static spark.Spark.*;
 
-// JSON parsing utilities
-import org.json.*;
-
 // I/O
 import java.io.File;
 import java.io.IOException;
 
-// Recursive directory deletion
 import org.apache.commons.io.FileUtils;
+// JSON parsing utilities
+import org.json.JSONObject;
 
 /**
  * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
@@ -45,6 +43,8 @@ public final class CIServer {
                     exitCode = triggerBuild(buildDirectory);
                     if (exitCode == ErrorCode.SUCCESS) {
                         System.out.println("Build was successful.");
+                        System.out.println("Running tests..");
+                        triggerTesting(parameters[0], buildDirectory);
                     } else {
                         System.out.println("Build failed.");
                     }
@@ -120,6 +120,37 @@ public final class CIServer {
             return ErrorCode.ERROR_FILE;
         }
     }
+
+    /**
+     * Method for running Junit tests.  
+     * 
+     */
+    public ErrorCode triggerTesting(String branchName, String testDirectory) {   
+            File testDir = new File(testDirectory);
+            if (testDir.exists() && testDir.isDirectory()){
+                System.out.println("Test directory exists, running tests.");
+                String[] testCommand = new String[]{"./gradlew",  "test"};
+                try {
+                    Process testProcess = Runtime.getRuntime().exec(testCommand, null, testDir);
+                    int testExitCode = testProcess.waitFor();
+                    if (testExitCode == 0) {
+                        System.out.println("tests for branch " + branchName + " succeeded.");
+                        return ErrorCode.SUCCESS;
+                    } else {
+                        System.err.println("tests for branch " + branchName + " failed. Exit code: " + testExitCode);
+                        return ErrorCode.ERROR_TEST;
+                    }
+                } catch (IOException | InterruptedException e) {
+                    System.err.println("Error running shell commands " + e.getMessage());
+                    return ErrorCode.ERROR_IO;
+                }
+                
+            }
+            return ErrorCode.ERROR_IO;
+        
+    }
+
+    
 
     /**
      * Method for parsing JSON response from GitHub webhook into relevant

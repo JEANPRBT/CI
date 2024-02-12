@@ -1,15 +1,15 @@
 package se.kth.ci;
 
-import org.apache.commons.io.FileUtils;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.apache.commons.io.FileUtils;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 
 class CIServerTest {
@@ -132,6 +132,56 @@ class CIServerTest {
             String filePath = Objects.requireNonNull(classLoader.getResource("valid_build_test")).getFile();
             ErrorCode exitCodeBuild = server.triggerBuild(filePath);
             assertEquals(ErrorCode.SUCCESS, exitCodeBuild, "A valid build was not successful.");
+        } catch (NullPointerException e){
+            System.err.println("Error while getting file path.");
+        }
+
+    }
+
+    /**
+     * Test for method `triggerTesting`
+     * Checks that when a project does not contain tests, the method returns NO_TESTS 
+     */
+    @Test
+    public void repoWithoutTests(){
+        String branchName = "main";
+        ClassLoader classLoader = getClass().getClassLoader();
+        try {
+            String filePath = Objects.requireNonNull(classLoader.getResource("valid_build_test")).getFile();
+            ErrorCode exitCodeTest = server.triggerTesting(branchName,filePath);
+            assertEquals(ErrorCode.SUCCESS, exitCodeTest, "Testing for a project without tests failed");
+        } catch (NullPointerException e){
+            System.err.println("Error while getting file path.");
+        }
+
+    }
+
+    /**
+     * Test for method `triggerTesting`
+     * Checks that when a project has valid tests, the method returns SUCCESS
+     */
+    @Test
+    public void triggerValidTests(){
+        String branchName = "main";
+        ClassLoader classLoader = getClass().getClassLoader();
+        String filePath = Objects.requireNonNull(classLoader.getResource("second_valid_tests")).getFile();
+        ErrorCode exitCodeTest = server.triggerTesting(branchName,filePath);
+        assertEquals(ErrorCode.SUCCESS, exitCodeTest, "Testing for valid tests failed");
+
+    }
+
+    /**
+     * Test for method `triggerTesting`
+     * Checks that when a project has invalid tests, the method returns ERROR_TEST
+     */
+    @Test
+    public void triggerInvalidTests(){
+        String branchName = "main";
+        ClassLoader classLoader = getClass().getClassLoader();
+        try {
+            String filePath = Objects.requireNonNull(classLoader.getResource("second_invalid_tests")).getFile();
+            ErrorCode exitCodeTest = server.triggerTesting(branchName,filePath);
+            assertEquals(ErrorCode.ERROR_TEST, exitCodeTest, "Testing for invalid tests was successful");
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
         }

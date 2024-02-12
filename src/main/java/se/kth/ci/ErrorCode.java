@@ -17,6 +17,11 @@ public enum ErrorCode {
     // An error occurred while building the project
     ERROR_BUILD,
 
+    // An error occurred while running the project tests
+    ERROR_TEST,
+
+    NO_TESTS,
+
     // The build was successful
     SUCCESS
 }
