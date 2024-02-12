@@ -3,22 +3,17 @@ package se.kth.ci;
 // HTTP server utilities
 import static spark.Spark.*;
 
-// JSON parsing utilities
-import org.json.*;
-
+import java.io.BufferedReader;
 // I/O
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-
-import org.kohsuke.github.*;
+import java.io.InputStreamReader;
 
 // Recursive directory deletion
 import org.apache.commons.io.FileUtils;
-
-import javax.script.*;
+// JSON parsing utilities
+import org.json.JSONObject;
+//import org.kohsuke.github.*;
 
 /**
  * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
@@ -67,6 +62,7 @@ public final class CIServer {
         });
 
         System.out.println("Server started...");
+        setCommitStatus(ErrorCode.SUCCESS);
     }
 
     /**
@@ -128,45 +124,57 @@ public final class CIServer {
         }
     }
 
+    /*
+     curl -Li -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer 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" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/Lola20b/dh2642_project/statuses/409a1817ca2a06655b2f3775dff1250163ddeafa -d '{"state":"pending","description":"Test"}'
+     */
     ErrorCode setCommitStatus(ErrorCode code){
-        String token = "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", //
+        String token = "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", //
                owner = "Lola20b", //
                repo = "dh2642_project", //
-               sha = "409a1817ca2a06655b2f3775dff1250163ddeafa";
+               sha = "409a1817ca2a06655b2f3775dff1250163ddeafa";    
         String state = code == ErrorCode.SUCCESS ? "success" : "failure";
-        String mes = "'{\"state\":\"" + state + "\",\"description\":\"Test\"}'";
-
+        String mes = "{\"state\":\"" + state + "\",\"description\":\"Test\"}";
         String url = "https://api.github.com/repos/" + owner + "/" + repo + "/statuses/" + sha;
-        System.out.println(url);
-        String[] command = new String[] {"curl", "-Li",
-            "-X", "POST",
-            "-H", "\"Accept:", "application/vnd.github+json\"",
-            "-H", "\"Authorization:", "Bearer", token, "\"",
-            "-H", "\"X-GitHub-Api-Version:", "2022-11-28\"",
-            url,
-            "-d", mes};
-
         try {
-            Process process = Runtime.getRuntime().exec(command);
-            byte[] b = new byte[10];
-            InputStream inputStream = process.getInputStream();
-            
-            int cloneExitCode = process.waitFor();
-            int read = inputStream.read(b);
-            String s = new String(b, StandardCharsets.UTF_8);
-            System.out.println(s);
-            if (cloneExitCode == 0) {
-                System.out.println("Curl process run");
-                return ErrorCode.SUCCESS;
-            } else {
-                System.err.println("Failed tp run curl. Exit code: " + cloneExitCode);
-                return ErrorCode.ERROR_CLONE;
+            String[] command = {
+                "curl",
+                "-Li",
+                "-X",
+                "POST",
+                "-H",
+                "\"Accept: application/vnd.github+json\"",
+                "-H",
+                "\"Authorization: Bearer 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\"",
+                "-H",
+                "\"X-GitHub-Api-Version: 2022-11-28\"",
+                "https://api.github.com/repos/Lola20b/dh2642_project/statuses/409a1817ca2a06655b2f3775dff1250163ddeafa",
+                "-d",
+                "{\\\"state\\\":\\\"pending\\\",\\\"description\\\":\\\"Test\\\"}"
+            };
+            // Create ProcessBuilder instance
+            ProcessBuilder processBuilder = new ProcessBuilder(command);
+
+            // Redirect error stream to output stream
+            processBuilder.redirectErrorStream(true);
+
+            // Start the process
+            Process process = processBuilder.start();
+
+            // Read the output
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
             }
+
+            // Wait for the process to finish
+            int exitCode = process.waitFor();
+            System.out.println("Curl command executed with exit code: " + exitCode);
+
         } catch (IOException | InterruptedException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
-            return ErrorCode.ERROR_IO;
         }
+        return code;
     }
 
     /**
