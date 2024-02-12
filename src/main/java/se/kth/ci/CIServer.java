@@ -4,11 +4,19 @@ package se.kth.ci;
 import static spark.Spark.*;
 
 // I/O
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 // library for timestamp
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+// regex
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,7 +24,6 @@ import java.util.regex.Pattern;
 import org.apache.commons.io.FileUtils;
 // JSON parsing utilities
 import org.json.JSONObject;
-
 
 /**
  * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
@@ -58,6 +65,16 @@ public final class CIServer {
                     FileUtils.deleteDirectory(new File(buildDirectory));
                     System.out.println("Build directory deleted.");
                 }
+
+                // här kan vi ta ut informationen/returna
+
+                String[] allBuildInfoExceptLog = getBuildInfo(req.body());
+                String buildLog = readLogFileToString("build.log");
+                System.out.println(buildLog);
+                // kalla på databasen
+                Database mydb = new Database();
+                // allBuildInfo returns {commitID, timeStamp}
+                mydb.insertBuild(mydb.getConnection(), allBuildInfoExceptLog[0], allBuildInfoExceptLog[1], buildLog);
             } catch (org.json.JSONException e) {
                 System.out.println("Error while parsing JSON. \n" + e.getMessage());
             } catch (IOException e) {
@@ -110,6 +127,7 @@ public final class CIServer {
             String[] buildCommand = new String[]{"./gradlew.bat",  "build", "testClasses", "-x", "test"};
             try {
                 Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
+                writeBuildLogToFile(buildProcess.getInputStream(), "build.log");
                 int buildExitCode = buildProcess.waitFor();
                 if (buildExitCode == 0) {
                     System.out.println("Build for branch succeeded.");
@@ -127,6 +145,34 @@ public final class CIServer {
             return ErrorCode.ERROR_FILE;
         }
     }
+
+    public static void writeBuildLogToFile(InputStream inputStream, String filePath){
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            BufferedWriter writer = new BufferedWriter(new FileWriter(filePath)); 
+            String line;
+             while ((line = reader.readLine()) != null) {
+                writer.write(line);
+                writer.newLine(); // Add a newline character after each line
+            }
+            writer.close();
+        }
+        catch(Exception e){
+            System.out.println("error when writing build log to file " + e);
+        }
+    }
+
+    public static String readLogFileToString(String filePath) {
+        String content = "";
+        try {
+            byte[] bytes = Files.readAllBytes(Paths.get(filePath));
+            content = new String(bytes);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return content;
+    }
+
 
     /**
      * Method for parsing JSON response from GitHub webhook into relevant
@@ -150,22 +196,23 @@ public final class CIServer {
      * "url":"https://github.com/Zaina-ram/testRepo/commit/e7f562a1a826629323e95b2bcb8d5aa33cef565b"
      */
     public String[] getBuildInfo(String response){
+        
         JSONObject obj = new JSONObject(response);
         // Commit id can be found in url: linkToRepo/commit/commitID
-        //String url = obj.getString("url");
         String url = obj.getJSONObject("head_commit").getString("url");
+
         // Define a regular expression pattern to extract the hash from the URL
         Pattern pattern = Pattern.compile("/commit/([a-fA-F0-9]+)");
         Matcher matcher = pattern.matcher(url);
-        String commitID = matcher.group(1);
+        String commitID = "";
+        if (matcher.find()) {
+            commitID = matcher.group(1);
+        }
 
         LocalDateTime currentDateTime = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String timestamp = currentDateTime.format(formatter);
-        
-        System.out.println("\n timestamp:" + timestamp);
-        System.out.println("\n commitID är: " + commitID);
-
-        return new String[]{commitID, timestamp, };
+    
+        return new String[]{commitID, timestamp};
     }
 }
