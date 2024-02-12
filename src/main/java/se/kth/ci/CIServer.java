@@ -1,7 +1,9 @@
 package se.kth.ci;
 
 // HTTP server utilities
-import static spark.Spark.*;
+import static spark.Spark.get;
+import static spark.Spark.port;
+import static spark.Spark.post;
 
 // I/O
 import java.io.BufferedReader;
@@ -13,6 +15,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+//db
+import java.sql.Statement;
 // library for timestamp
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -30,7 +36,9 @@ import org.json.JSONObject;
  * Class representing our CI server which handles all incoming webhooks using HTTP methods.
  */
 public final class CIServer {
-
+    
+    // initilize new database 
+    private Database mydb; 
     /**
      * Public constructor for a CI server.
      *
@@ -42,10 +50,32 @@ public final class CIServer {
         // Set up port to listen on
         port(port);
 
+
         // ------------------------------- Launching the server ------------------------------- //
-        get(endpoint, (req, res) -> {
+        get("/builds/:commitId", (req, res) -> {
             System.out.println("GET request received.");
-            return "CI Server for Java Projects with Gradle.";
+            String commitId = req.params(":commitId");
+            System.out.println("Fetching build info for commitId: " + commitId);
+
+            // Query database for build info based on commitId
+            String[] buildInfo = getBuildInfoByCommitId(commitId);
+            if (buildInfo != null) {
+                System.out.println("Build info found for commitId: " + commitId);
+                res.type("text/html");
+                return String.format("<!DOCTYPE html><html><head><title>Build Info</title></head>" +
+                        "<body><h1>Build Information for Commit %s</h1>" +
+                        "<div><strong>Commit ID:</strong> %s</div>" +
+                        "<div><strong>Build Date:</strong> %s</div>" +
+                        "<div><strong>Build Logs:</strong> <pre>%s</pre></div>" +
+                        "</body></html>", commitId, buildInfo[0], buildInfo[1], buildInfo[2]);
+            } else {
+                System.out.println("No build info found for commitId: " + commitId);
+                res.status(404);
+                return "<!DOCTYPE html><html><head><title>Not Found</title></head>" +
+                        "<body><h1>404 Not Found</h1>" +
+                        "<p>Build information not found for commit ID: " + commitId + "</p>" +
+                        "</body></html>";
+            }
         });
 
         post(endpoint, (req, res) -> {
@@ -65,14 +95,11 @@ public final class CIServer {
                     FileUtils.deleteDirectory(new File(buildDirectory));
                     System.out.println("Build directory deleted.");
                 }
-
-                // här kan vi ta ut informationen/returna
-
                 String[] allBuildInfoExceptLog = getBuildInfo(req.body());
                 String buildLog = readLogFileToString("build.log");
                 System.out.println(buildLog);
                 // kalla på databasen
-                Database mydb = new Database();
+                mydb = new Database();
                 // allBuildInfo returns {commitID, timeStamp}
                 mydb.insertBuild(mydb.getConnection(), allBuildInfoExceptLog[0], allBuildInfoExceptLog[1], buildLog);
             } catch (org.json.JSONException e) {
@@ -124,7 +151,7 @@ public final class CIServer {
         File repoDirectory = new File(buildDirectory);
         if (repoDirectory.exists() && repoDirectory.isDirectory()) {
             System.out.println("Directory exists.");
-            String[] buildCommand = new String[]{"./gradlew.bat",  "build", "testClasses", "-x", "test"};
+            String[] buildCommand = new String[]{"./gradlew",  "build", "testClasses", "-x", "test"};
             try {
                 Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
                 writeBuildLogToFile(buildProcess.getInputStream(), "build.log");
@@ -215,4 +242,27 @@ public final class CIServer {
     
         return new String[]{commitID, timestamp};
     }
+
+    private String[] getBuildInfoByCommitId(String commitId) {
+    String sql = "SELECT * FROM build_history WHERE commit_id = '" + commitId + "'";
+    try (Statement stmt = mydb.getConnection().createStatement()){
+        System.out.println("Trying to get build info for " + commitId);
+        // Execute the query and obtain the result set
+        ResultSet rs = stmt.executeQuery(sql);
+        
+        // Process the result set
+        if (rs.next()) {
+            String[] buildInfo = new String[3];
+            buildInfo[0] = rs.getString("commit_id"); // Commit ID
+            buildInfo[1] = rs.getString("build_date"); // Build Date
+            buildInfo[2] = rs.getString("build_logs"); // Build Logs
+            return buildInfo;
+        }
+        
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return null; // Return null if no build information was found
+}
+
 }
