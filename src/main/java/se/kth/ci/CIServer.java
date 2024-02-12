@@ -14,16 +14,16 @@ import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
 
 /**
- * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
  * Class representing our CI server which handles all incoming webhooks using HTTP methods.
+ * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
  */
 public final class CIServer {
 
     /**
      * Public constructor for a CI server.
-     *
      * @param port the port number to listen traffic on
-     * @param endpoint String : the endpoint to send webhooks to
+     * @param endpoint String : the endpoint to send webhooks to (e.g. "/webhook")
+     * @param buildDirectory String : the directory in which to clone, build and test repositories
      */
     public CIServer(int port, String endpoint, String buildDirectory) {
 
@@ -81,6 +81,7 @@ public final class CIServer {
      * It clones the repository in the folder `buildDirectory`.
      * @param repoURL String : URL of the repository to be built
      * @param branchName String : branch on which push was made
+     * @param buildDirectory String : the directory in which to clone the repository
      * @return ErrorCode : exit code of the operation
      */
     public ErrorCode cloneRepository(String repoURL, String branchName, String buildDirectory){
