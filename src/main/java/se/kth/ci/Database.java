@@ -7,6 +7,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 
 
@@ -31,11 +33,11 @@ public final class Database{
         } 
 
         createTable(conn);
-        //insertBuild(conn, 1, 345, "01-01-01", "test");
-        //listTables(conn);
-        //deleteTable(conn, "build_history");
     }
-
+    /**
+     * Gets connection, can be used in CIServer
+     * @return
+     */
     public Connection getConnection(){
         return conn;
     }
@@ -76,29 +78,29 @@ public final class Database{
             e.printStackTrace();
         }
     }
-    // The following two functions can be deleted, I don't think we have a need for them
-    public void listTables(Connection conn){
-        try {
-            DatabaseMetaData meta = conn.getMetaData();
-            ResultSet tables = meta.getTables(null, null, null, new String[]{"TABLE"});
-            
-            System.out.println("Tables in the database:");
-            while (tables.next()) {
-                System.out.println(tables.getString("TABLE_NAME"));
-            }
-        } catch (SQLException e) {
-            System.out.println("Error: " + e.getMessage());
+    /**
+     * Fetches data from all entries in the database's table
+     * @return builds: a list of arrays {commit_id, build_date, build_logs}
+     */
+    public List<String[]> getAllBuilds() {
+    List<String[]> builds = new ArrayList<>();
+    String sql = "SELECT commit_id, build_date, build_logs FROM build_history";
+    try (Statement stmt = this.conn.createStatement();
+         ResultSet rs = stmt.executeQuery(sql)) {
+        while (rs.next()) {
+            String[] buildInfo = new String[3];
+            buildInfo[0] = rs.getString("commit_id");
+            buildInfo[1] = rs.getString("build_date");
+            buildInfo[2] = rs.getString("build_logs");
+            builds.add(buildInfo);
         }
+    } catch (SQLException e) {
+        System.err.println("Failed to fetch builds.");
+        e.printStackTrace();
     }
+    return builds;
+}
 
-    public void deleteTable(Connection conn,String tableName){
-        try (Statement stmt = conn.createStatement()){
-            String sql = "DROP TABLE IF EXISTS " + tableName;
-            stmt.execute(sql);
-            System.out.println("Table '" + tableName + "' deleted successfully.");
-        } catch (SQLException e) {
-            System.out.println("Error: " + e.getMessage());
-        }
-    }
 
 }
+

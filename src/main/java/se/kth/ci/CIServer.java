@@ -22,6 +22,7 @@ import java.sql.Statement;
 // library for timestamp
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 // regex
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -58,17 +59,38 @@ public final class CIServer {
             String commitId = req.params(":commitId");
             System.out.println("Fetching build info for commitId: " + commitId);
 
-            // Query database for build info based on commitId
+            // Fetch build info for specific build
             String[] buildInfo = getBuildInfoByCommitId(commitId);
             if (buildInfo != null) {
                 System.out.println("Build info found for commitId: " + commitId);
                 res.type("text/html");
-                return String.format("<!DOCTYPE html><html><head><title>Build Info</title></head>" +
-                        "<body><h1>Build Information for Commit %s</h1>" +
-                        "<div><strong>Commit ID:</strong> %s</div>" +
-                        "<div><strong>Build Date:</strong> %s</div>" +
-                        "<div><strong>Build Logs:</strong> <pre>%s</pre></div>" +
-                        "</body></html>", commitId, buildInfo[0], buildInfo[1], buildInfo[2]);
+                // This formats a nice table with green, white and grey colors.
+                return String.format("""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        table { width: 100%%; border-collapse: collapse; }
+                        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+                        th { background-color: #4CAF50; color: white; }
+                        tr:nth-child(even) { background-color: #f2f2f2; }
+                        tr:hover { background-color: #ddd; }
+                        pre { white-space: pre-wrap; word-wrap: break-word; }
+                    </style>
+                    </head>
+                    <body>
+                    <table>
+                    <tr><th>Commit ID</th><th>Build Date</th><th>Build Logs</th></tr>
+                    <tr>
+                        <td>%s</td> <!-- Commit ID -->
+                        <td>%s</td> <!-- Build Date -->
+                        <td><pre>%s</pre></td> <!-- Build Logs -->
+                    </tr>
+                    </table>
+                    </body>
+                    </html>
+                    """, buildInfo[0], buildInfo[1], buildInfo[2]);
             } else {
                 System.out.println("No build info found for commitId: " + commitId);
                 res.status(404);
@@ -78,6 +100,51 @@ public final class CIServer {
                         "</body></html>";
             }
         });
+        get("/builds", (req, res) -> {
+            // Get build info for all commits
+            List<String[]> allBuilds = mydb.getAllBuilds(); // Assuming mydb is accessible here and has a method getAllBuilds
+            StringBuilder html = new StringBuilder("""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                <title>All Builds</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    table { width: 100%; border-collapse: separate; border-spacing: 0; } /* Adjusted */
+                    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; border-right: 1px solid #ddd; } /* Adjusted */
+                    th { background-color: #4CAF50; color: white; border-right: 1px solid #ddd; } /* Adjusted */
+                    tr:nth-child(even) { background-color: #f2f2f2; }
+                    tr:hover { background-color: #ddd; }
+                    pre { white-space: pre-wrap; word-wrap: break-word; }
+                    th, tr:first-child th, tr:first-child td { border-top: 1px solid #ddd; } /* New */
+                    td, th { border-left: 1px solid #ddd; } /* New */
+                    td:first-child, th:first-child { border-left: none; } /* New */
+                </style>
+                </head>
+                <body>
+                <h1>All Build Information</h1>
+                <table>
+                <tr><th>Commit ID</th><th>Build Date</th><th>Build Logs</th></tr>
+                """);
+
+                for (String[] build : allBuilds) {
+                    html.append(String.format("""
+                        <tr>
+                            <td>%s</td>
+                            <td>%s</td>
+                            <td><pre>%s</pre></td>
+                        </tr>
+                        """, build[0], build[1], build[2]));
+                }
+
+                html.append("""
+                    </table>
+                    </body>
+                    </html>
+                    """);
+                res.type("text/html");
+                return html.toString();
+            });
 
         post(endpoint, (req, res) -> {
             System.out.println("POST request received.");
@@ -173,6 +240,11 @@ public final class CIServer {
         }
     }
 
+    /**
+     * Writes the gradle build log to the specified file
+     * @param inputStream
+     * @param filePath
+     */
     public static void writeBuildLogToFile(InputStream inputStream, String filePath){
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
@@ -188,7 +260,11 @@ public final class CIServer {
             System.out.println("error when writing build log to file " + e);
         }
     }
-
+    /**
+     * Reads the specified log file
+     * @param filePath
+     * @return content - the contens of the file
+     */
     public static String readLogFileToString(String filePath) {
         String content = "";
         try {
@@ -216,11 +292,9 @@ public final class CIServer {
 
 
     /**
-     * primary key 
-     * commit id: 
+     * primary key: commit id: 
      * build date
-     * build logs 
-     * "url":"https://github.com/Zaina-ram/testRepo/commit/e7f562a1a826629323e95b2bcb8d5aa33cef565b"
+     * build logs
      */
     public String[] getBuildInfo(String response){
         
@@ -242,7 +316,11 @@ public final class CIServer {
     
         return new String[]{commitID, timestamp};
     }
-
+    /**
+     * Get the build info for a specific commit
+     * @param commitId
+     * @return buildInfo, an array {commit_id, build_date, build_logs}
+     */
     private String[] getBuildInfoByCommitId(String commitId) {
     String sql = "SELECT * FROM build_history WHERE commit_id = '" + commitId + "'";
     try (Statement stmt = mydb.getConnection().createStatement()){
