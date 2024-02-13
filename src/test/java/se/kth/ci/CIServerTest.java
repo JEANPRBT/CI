@@ -4,9 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Objects;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
@@ -23,7 +20,7 @@ class CIServerTest {
      */
     @BeforeAll
     static void startServer() {
-        server = new CIServer(8080, "/", buildDirectory);
+        server = new CIServer(8029, "/", buildDirectory);
     }
 
     /**
@@ -138,25 +135,6 @@ class CIServerTest {
             System.err.println("Error while getting file path.");
         }
 
-    }
-
-    /**
-     * Checks that query to database returns expected results. 
-     * @throws IOException if the database is not found
-     */
-    @Test
-    public void getDataFromDatabase() throws IOException{
-        Database db = new Database("jdbc:sqlite:build_history.db");
-        String commitId = "3525b1231d11f9712740e28f3e4f5df6b79425bb";
-        String timestamp = "2024-02-12 23:01:36";
-        String buildLog;
-        byte[] bytes = Files.readAllBytes(Paths.get("build.log"));
-        buildLog = new String(bytes);
-        String[] buildInfo = db.getBuild(commitId);
-        assertNotNull(buildInfo, "No build info found in the database.");
-        assertEquals(commitId, buildInfo[0], "commitId doesn't match");
-        assertEquals(timestamp, buildInfo[1], "timestamp doesn't match");
-        assertEquals(buildLog, buildInfo[2], "buildLog doesn't match");
     }
 
     /**

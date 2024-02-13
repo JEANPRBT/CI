@@ -17,4 +17,4 @@ to_build/
 test_build/
 
 ### file containing build log
-build.log
+*.log

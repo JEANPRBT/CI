@@ -27,8 +27,7 @@ import org.json.JSONObject;
  * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
  */
 public final class CIServer {
-    
-    // Initialize a new connection to the database object
+
     private final Database db;
 
     /**
@@ -49,7 +48,6 @@ public final class CIServer {
         // Route for a specific build
         get(endpoint + "/builds/:commitId", (req, res) -> {
 
-            System.out.println("GET request received.");
             String commitId = req.params(":commitId");
             System.out.println("Fetching build info for commitId: " + commitId);
 
@@ -101,7 +99,7 @@ public final class CIServer {
                 <!DOCTYPE html>
                 <html>
                 <head>
-                <title>All Builds</title>
+                <title>Build history</title>
                 <style>
                     body { font-family: Arial, sans-serif; margin: 20px; }
                     table { width: 100%; border-collapse: separate; border-spacing: 0; } /* Adjusted */
@@ -124,11 +122,11 @@ public final class CIServer {
                 for (String[] build : allBuilds) {
                     html.append(String.format("""
                         <tr>
-                            <td>%s</td>
+                            <td><a href="./builds/%s">%s</a></td>
                             <td>%s</td>
                             <td><pre>%s</pre></td>
                         </tr>
-                        """, build[0], build[1], build[2]));
+                        """, build[0], build[0], build[1], build[2]));
                 }
 
                 html.append("""
@@ -152,7 +150,7 @@ public final class CIServer {
                     exitCode = triggerBuild(buildDirectory);
                     if (exitCode == ErrorCode.SUCCESS) {
                         System.out.println("Running tests..");
-                        exitCode = triggerTesting(buildDirectory);
+                        triggerTesting(buildDirectory);
                     }
                     FileUtils.deleteDirectory(new File(buildDirectory));
                     System.out.println("Build directory deleted.");
@@ -160,9 +158,11 @@ public final class CIServer {
                 String buildLog = Utils.readLogFileToString("build.log");
                 System.out.println(buildLog);
                 // allBuildInfo returns {commitID, timeStamp}
+
                 ErrorCode insertExitCode = db.insertBuild(parameters[2], parameters[3], buildLog);
+
                 if(insertExitCode == ErrorCode.SUCCESS){
-                    System.out.println("Insert into DB was succesful");
+                    System.out.println("Insert into DB was successful");
                 }
                 else{
                     System.out.println("Insert into DB failed");

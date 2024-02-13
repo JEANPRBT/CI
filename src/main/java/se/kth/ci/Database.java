@@ -16,20 +16,28 @@ public final class Database{
 
     /**
      * Constructor which establishes connection to the database and creates a table if it does not exist.
-     * @param url String: link to the database, for example "jdbc:sqlite:build_history.db";
+     * @param url String: link to the database, for example "jdbc:sqlite:build_history.db"
      */
     public Database(String url){
         try {
             conn = DriverManager.getConnection(url);
-            System.out.println("Connection to SQLite has been established.");
+            System.out.println("Connection to database has been established.");
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.err.println("Connection to database failed. " + e.getMessage());
         }
         createTable();
     }
 
     /**
-     * Method for creating the main table which will includes the build information
+     * Getter for the connection to the database.
+     * @return Connection : the connection to the database
+     */
+    public Connection getConnection(){
+        return conn;
+    }
+
+    /**
+     * Method for creating the main table which will includes the build information.
      */
     public void createTable(){
         String sql = "CREATE TABLE IF NOT EXISTS build_history (" +
@@ -39,7 +47,7 @@ public final class Database{
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
         } catch (SQLException e) {
-            System.out.println("Error while creating the table. " + e.getMessage());
+            System.err.println("Error while creating the table. " + e.getMessage());
         }
     }
     
@@ -59,7 +67,7 @@ public final class Database{
             System.out.println("Values inserted into the build_history table successfully.");
             return ErrorCode.SUCCESS;
         } catch (SQLException e) {
-            System.out.println("Error while inserting values into the build_history table. " + e.getMessage());
+            System.err.println("Error while inserting values into the build_history table. " + e.getMessage());
             return ErrorCode.ERROR_INSERT_DB;
         }
     }
@@ -82,7 +90,7 @@ public final class Database{
                 };
             }
         } catch (SQLException e) {
-            System.out.println("Error while retrieving build info " + e.getMessage());
+            System.err.println("Error while retrieving build info. " + e.getMessage());
         }
         return null;
     }
