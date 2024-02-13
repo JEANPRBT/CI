@@ -15,17 +15,20 @@ import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
 //import org.kohsuke.github.*;
 
+// JSON parsing utilities
+import org.json.JSONObject;
+
 /**
- * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
  * Class representing our CI server which handles all incoming webhooks using HTTP methods.
+ * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
  */
 public final class CIServer {
 
     /**
      * Public constructor for a CI server.
-     *
      * @param port the port number to listen traffic on
-     * @param endpoint String : the endpoint to send webhooks to
+     * @param endpoint String : the endpoint to send webhooks to (e.g. "/webhook")
+     * @param buildDirectory String : the directory in which to clone, build and test repositories
      */
     public CIServer(int port, String endpoint, String buildDirectory) {
 
@@ -42,13 +45,14 @@ public final class CIServer {
             System.out.println("POST request received.");
             try {
                 String[] parameters = parseResponse(req.body());
-                ErrorCode exitCode = cloneRepository(parameters[1], parameters[0], buildDirectory);
+                System.out.println("Cloning repository...");
+                ErrorCode exitCode = cloneRepository(parameters[0], parameters[1], buildDirectory);
                 if (exitCode == ErrorCode.SUCCESS) {
+                    System.out.println("Running build...");
                     exitCode = triggerBuild(buildDirectory);
                     if (exitCode == ErrorCode.SUCCESS) {
-                        System.out.println("Build was successful.");
-                    } else {
-                        System.out.println("Build failed.");
+                        System.out.println("Running tests..");
+                        exitCode = triggerTesting(buildDirectory);
                     }
                     FileUtils.deleteDirectory(new File(buildDirectory));
                     System.out.println("Build directory deleted.");
@@ -66,10 +70,24 @@ public final class CIServer {
     }
 
     /**
+     * Method for parsing JSON response from GitHub webhook into relevant
+     * parameters for triggering build process.
+     * @param response String : the request body to be parsed
+     * @return String[] : an array containing the repository URL and the branch name
+     */
+    public String[] parseResponse(String response) throws org.json.JSONException{
+        JSONObject obj = new JSONObject(response);
+        String repoURL = obj.getJSONObject("repository").getString("url");
+        String branch = obj.getString("ref").substring("refs/heads/".length());
+        return new String[]{repoURL, branch};
+    }
+
+    /**
      * Method for cloning the repository corresponding to the given URL and branch name.
-     * It clones the repository in the folder `to_build`.
+     * It clones the repository in the folder `buildDirectory`.
      * @param repoURL String : URL of the repository to be built
      * @param branchName String : branch on which push was made
+     * @param buildDirectory String : the directory in which to clone the repository
      * @return ErrorCode : exit code of the operation
      */
     public ErrorCode cloneRepository(String repoURL, String branchName, String buildDirectory){
@@ -96,22 +114,22 @@ public final class CIServer {
     }
 
     /**
-     * Method for triggering the build process for the repository in the `to_build` directory.
+     * Method for triggering the build process for the repository in the `buildDirectory`.
+     * @param buildDirectory String : the directory in which to build the repository
      * @return ErrorCode : exit code of the operation
      */
     public ErrorCode triggerBuild(String buildDirectory){
         File repoDirectory = new File(buildDirectory);
         if (repoDirectory.exists() && repoDirectory.isDirectory()) {
-            System.out.println("Directory exists.");
-            String[] buildCommand = new String[]{"./gradlew",  "build", "testClasses", "-x", "test"};
+            String[] buildCommand = new String[]{"./gradlew",  "build", "-x", "test"};
             try {
                 Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
                 int buildExitCode = buildProcess.waitFor();
                 if (buildExitCode == 0) {
-                    System.out.println("Build for branch succeeded.");
+                    System.out.println("Build succeeded.");
                     return ErrorCode.SUCCESS;
                 } else {
-                    System.err.println("Build for branch failed. Exit code: " + buildExitCode);
+                    System.err.println("Build failed. Exit code: " + buildExitCode);
                     return ErrorCode.ERROR_BUILD;
                 }
             } catch (IOException | InterruptedException e) {
@@ -178,15 +196,51 @@ public final class CIServer {
     }
 
     /**
-     * Method for parsing JSON response from GitHub webhook into relevant
-     * parameters for triggering build process.
-     * @param response String : the request body to be parsed
-     * @return String[] : an array containing the branch name and the repository URL
+     * Method for running tests in the `testDirectory`.
+     * @param testDirectory String : the directory in which to run the tests
+     * @return ErrorCode : exit code of the operation
      */
-    public String[] parseResponse(String response) throws org.json.JSONException{
-        JSONObject obj = new JSONObject(response);
-        String branch = obj.getString("ref").substring("refs/heads/".length());
-        String repoURL = obj.getJSONObject("repository").getString("url");
-        return new String[]{branch, repoURL};
+    public ErrorCode triggerTesting(String testDirectory) {
+        File testDir = new File(testDirectory);
+        if(!repositoryContainsTests(testDirectory)){
+            System.out.println("No tests found.");
+            return ErrorCode.NO_TESTS;
+        }
+        if (testDir.exists() && testDir.isDirectory()){
+            String[] testCommand = new String[]{"./gradlew",  "test"};
+            try {
+                Process testProcess = Runtime.getRuntime().exec(testCommand, null, testDir);
+                int testExitCode = testProcess.waitFor();
+                if (testExitCode == 0) {
+                    System.out.println("Tests succeeded.");
+                    return ErrorCode.SUCCESS;
+                } else {
+                    System.err.println("Tests failed. Exit code: " + testExitCode);
+                    return ErrorCode.ERROR_TEST;
+                }
+            } catch (IOException | InterruptedException e) {
+                System.err.println("Error running shell commands " + e.getMessage());
+                return ErrorCode.ERROR_IO;
+            }
+        }
+        return ErrorCode.ERROR_IO;
+    }
+
+    // ------------------------------- Helper methods ------------------------------- //
+
+    /**
+     * Method for checking if the repository contains tests.
+     * @param repositoryPath String : the repository to check
+     * @return boolean : true if the repository contains tests, false otherwise
+     */
+    private boolean repositoryContainsTests(String repositoryPath) {
+        File testDirectory = new File(repositoryPath + "/src/test/java");
+        if (testDirectory.exists() && testDirectory.isDirectory()) {
+            String[] files = testDirectory.list();
+            return files != null && files.length > 0;
+        }
+        return false;
     }
 }
+
+
