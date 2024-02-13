@@ -51,8 +51,8 @@ class CIServerTest {
      */
     @Test
     public void parseResponsePositiveTest(){
-        String json = "{\"ref\":\"refs/heads/testing_value_ref\", \"repository\": {\"url\": \"https://testing_value_url\"}}";
-        String[] expected = new String[]{"https://testing_value_url", "testing_value_ref"};
+        String json = "{\"ref\":\"refs/heads/testing_value_ref\", \"repository\": {\"url\": \"https://testing_value_url\", \"full_name\":\"owner/repo\"}, \"after\":\"SHA\"}";
+        String[] expected = new String[]{"https://testing_value_url", "testing_value_ref", "owner/repo", "SHA"};
         try {
             assertArrayEquals(expected, server.parseResponse(json), "JSON string was not parsed correctly.");
         } catch (org.json.JSONException e){
