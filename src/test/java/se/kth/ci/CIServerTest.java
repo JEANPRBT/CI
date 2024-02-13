@@ -20,7 +20,7 @@ class CIServerTest {
      */
     @BeforeAll
     static void startServer() {
-        server = new CIServer(8029, "/", buildDirectory);
+        server = new CIServer(8080, "/", buildDirectory);
     }
 
     /**

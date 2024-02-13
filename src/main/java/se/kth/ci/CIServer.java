@@ -356,7 +356,6 @@ public final class CIServer {
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line = reader.readLine();
 
-            // Wait for the process to finish
             int exitCode = process.waitFor();
             if (exitCode == 0 && line.contains("HTTP/2 201")) {
                 return ErrorCode.SUCCESS;
