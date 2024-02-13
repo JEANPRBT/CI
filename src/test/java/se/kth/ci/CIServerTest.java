@@ -6,12 +6,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Objects;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
 
 class CIServerTest {
 
@@ -34,6 +34,9 @@ class CIServerTest {
         spark.Spark.stop();
     }
 
+    /**
+     * Delete the build directory after all tests are done
+     */
     @AfterAll
     static void deleteBuildDirectory() {
         try {
@@ -50,7 +53,7 @@ class CIServerTest {
     @Test
     public void parseResponsePositiveTest(){
         String json = "{\"ref\":\"refs/heads/testing_value_ref\", \"repository\": {\"url\": \"https://testing_value_url\",\"head_commit\": {\"url\": \"https://testing_value_url/123\",\"head_commit\": {\"timestamp\": \"2024-02-12T10:17:49+01:00\"}}";
-        String[] expected = new String[]{"testing_value_ref", "https://testing_value_url","123", "024-02-12T10:17:49+01:00"};
+        String[] expected = new String[]{"https://testing_value_url", "testing_value_ref", "123", "024-02-12T10:17:49+01:00"};
         try {
             assertArrayEquals(expected, server.parseResponse(json), "JSON string was not parsed correctly.");
         } catch (org.json.JSONException e){
@@ -68,8 +71,6 @@ class CIServerTest {
         assertThrows(org.json.JSONException.class, () -> server.parseResponse(notJson),
                 "Method parsed a non-JSON string.");
     }
-
-  
 
     /**
      * Test for method `handleRequest`
@@ -110,29 +111,29 @@ class CIServerTest {
     /**
      * Test for method `triggerBuild`
      * Checks that when an invalid build is triggered the method returns ERROR_BUILD.
-    
+    */
     @Test
     public void triggerInvalidBuild(){
         ClassLoader classLoader = getClass().getClassLoader();
         try {
-            String filePath = Objects.requireNonNull(classLoader.getResource("invalid_build_test")).getFile();
+            String filePath = Objects.requireNonNull(classLoader.getResource("invalid_build")).getFile();
             ErrorCode exitCodeBuild = server.triggerBuild(filePath);
             assertEquals(ErrorCode.ERROR_BUILD, exitCodeBuild, "An invalid build was successful.");
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
         }
 
-    } */
+    }
 
     /**
      * Test for method `triggerBuild`
      * Checks that when a valid build is triggered the method returns SUCCESS.
-    
+     */
     @Test
     public void triggerValidBuild(){
         ClassLoader classLoader = getClass().getClassLoader();
         try {
-            String filePath = Objects.requireNonNull(classLoader.getResource("valid_build_test")).getFile();
+            String filePath = Objects.requireNonNull(classLoader.getResource("valid_build")).getFile();
             ErrorCode exitCodeBuild = server.triggerBuild(filePath);
             assertEquals(ErrorCode.SUCCESS, exitCodeBuild, "A valid build was not successful.");
         } catch (NullPointerException e){
@@ -140,27 +141,68 @@ class CIServerTest {
         }
 
     }
-    */
+
     /**
      * Checks that query to database returns expected results. 
-     * @throws IOException
+     * @throws IOException if the database is not found
      */
-
     @Test
     public void getDataFromDatabase() throws IOException{
-        Database mydb = new Database(); 
-        mydb.getConnection();
+        Database db = new Database("jdbc:sqlite:build_history.db");
         String commitId = "3525b1231d11f9712740e28f3e4f5df6b79425bb";
         String timestamp = "2024-02-12 23:01:36";
-        String buildLog; 
+        String buildLog;
         byte[] bytes = Files.readAllBytes(Paths.get("build.log"));
         buildLog = new String(bytes);
-        String[] buildInfo = server.getBuildInfoByCommitId(commitId);
-        assertEquals(commitId, buildInfo[0], "Commit_id doesn't match");
+        String[] buildInfo = db.getBuild(commitId);
+        assertNotNull(buildInfo, "No build info found in the database.");
+        assertEquals(commitId, buildInfo[0], "commitId doesn't match");
         assertEquals(timestamp, buildInfo[1], "timestamp doesn't match");
-        assertEquals(buildLog, buildInfo[2], "build log doesn't match");
+        assertEquals(buildLog, buildInfo[2], "buildLog doesn't match");
     }
 
+    /**
+     * Test for method `triggerTesting`
+     * Checks that when a project does not contain tests, the method returns NO_TESTS 
+     */
+    @Test
+    public void repoWithoutTests(){
+        ClassLoader classLoader = getClass().getClassLoader();
+        try {
+            String filePath = Objects.requireNonNull(classLoader.getResource("valid_build")).getFile();
+            ErrorCode exitCodeTest = server.triggerTesting(filePath);
+            assertEquals(ErrorCode.NO_TESTS, exitCodeTest, "Testing for a project without tests was triggered.");
+        } catch (NullPointerException e){
+            System.err.println("Error while getting file path.");
+        }
 
+    }
 
+    /**
+     * Test for method `triggerTesting`
+     * Checks that when a project has valid tests, the method returns SUCCESS
+     */
+    @Test
+    public void triggerValidTests(){
+        ClassLoader classLoader = getClass().getClassLoader();
+        String filePath = Objects.requireNonNull(classLoader.getResource("valid_tests")).getFile();
+        ErrorCode exitCodeTest = server.triggerTesting(filePath);
+        assertEquals(ErrorCode.SUCCESS, exitCodeTest, "Testing for valid tests failed.");
+    }
+
+    /**
+     * Test for method `triggerTesting`
+     * Checks that when a project has invalid tests, the method returns ERROR_TEST
+     */
+    @Test
+    public void triggerInvalidTests(){
+        ClassLoader classLoader = getClass().getClassLoader();
+        try {
+            String filePath = Objects.requireNonNull(classLoader.getResource("invalid_tests")).getFile();
+            ErrorCode exitCodeTest = server.triggerTesting(filePath);
+            assertEquals(ErrorCode.ERROR_TEST, exitCodeTest, "Testing for invalid tests was successful.");
+        } catch (NullPointerException e){
+            System.err.println("Error while getting file path.");
+        }
+    }
 }
