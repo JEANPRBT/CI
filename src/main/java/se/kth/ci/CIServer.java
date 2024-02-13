@@ -4,8 +4,6 @@ package se.kth.ci;
 import static spark.Spark.*;
 
 // I/O
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -13,10 +11,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-//db
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+
 // library for timestamp
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -49,7 +44,7 @@ public final class CIServer {
 
         // Set up port to listen on
         port(port);
-        mydb = new Database();
+        mydb = new Database("jdbc:sqlite:build_history.db");
 
 
         // ------------------------------- Launching the server ------------------------------- //
@@ -59,7 +54,7 @@ public final class CIServer {
             System.out.println("Fetching build info for commitId: " + commitId);
 
             // Fetch build info for specific build
-            String[] buildInfo = getBuildInfoByCommitId(commitId);
+            String[] buildInfo = mydb.getBuildInfoByCommitId(commitId);
             if (buildInfo != null) {
                 System.out.println("Build info found for commitId: " + commitId);
                 res.type("text/html");
@@ -161,10 +156,16 @@ public final class CIServer {
                     FileUtils.deleteDirectory(new File(buildDirectory));
                     System.out.println("Build directory deleted.");
                 }
-                String buildLog = readLogFileToString("build.log");
+                String buildLog = Utils.readLogFileToString("build.log");
                 System.out.println(buildLog);
                 // allBuildInfo returns {commitID, timeStamp}
-                mydb.insertBuild(mydb.getConnection(), parameters[2], parameters[3], buildLog);
+                ErrorCode insertExitCode = mydb.insertBuild(mydb.getConnection(), parameters[2], parameters[3], buildLog);
+                if(insertExitCode == ErrorCode.SUCCESS){
+                    System.out.println("Insert into DB was succesful");
+                }
+                else{
+                    System.out.println("Insert into DB failed");
+                }
             } catch (org.json.JSONException e) {
                 System.out.println("Error while parsing JSON. \n" + e.getMessage());
             } catch (IOException e) {
@@ -217,7 +218,7 @@ public final class CIServer {
             String[] buildCommand = new String[]{"./gradlew",  "build", "testClasses", "-x", "test"};
             try {
                 Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
-                writeBuildLogToFile(buildProcess.getInputStream(), "build.log");
+                Utils.writeBuildLogToFile(buildProcess.getInputStream(), "build.log");
                 int buildExitCode = buildProcess.waitFor();
                 if (buildExitCode == 0) {
                     System.out.println("Build for branch succeeded.");
@@ -234,42 +235,6 @@ public final class CIServer {
             System.err.println("Repository directory does not exist: " + buildDirectory);
             return ErrorCode.ERROR_FILE;
         }
-    }
-
-    /**
-     * Writes the gradle build log to the specified file
-     * @param inputStream
-     * @param filePath
-     */
-    public static void writeBuildLogToFile(InputStream inputStream, String filePath){
-        try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-            BufferedWriter writer = new BufferedWriter(new FileWriter(filePath)); 
-            String line;
-             while ((line = reader.readLine()) != null) {
-                writer.write(line);
-                writer.newLine(); // Add a newline character after each line
-            }
-            writer.close();
-        }
-        catch(Exception e){
-            System.out.println("error when writing build log to file " + e);
-        }
-    }
-    /**
-     * Reads the specified log file
-     * @param filePath
-     * @return content - the contens of the file
-     */
-    public static String readLogFileToString(String filePath) {
-        String content = "";
-        try {
-            byte[] bytes = Files.readAllBytes(Paths.get(filePath));
-            content = new String(bytes);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return content;
     }
 
 
@@ -298,32 +263,4 @@ public final class CIServer {
         
         return new String[]{branch, repoURL, commitID, timestamp};
     }
-
-    /**
-     * Get the build info for a specific commit
-     * @param commitId
-     * @return buildInfo, an array {commit_id, build_date, build_logs}
-     */
-    public String[] getBuildInfoByCommitId(String commitId) {
-        String sql = "SELECT * FROM build_history WHERE commit_id = '" + commitId + "'";
-        try (Statement stmt = mydb.getConnection().createStatement()){
-            System.out.println("Trying to get build info for " + commitId);
-            // Execute the query and obtain the result set
-            ResultSet rs = stmt.executeQuery(sql);
-            
-            // Process the result set
-            if (rs.next()) {
-                String[] buildInfo = new String[3];
-                buildInfo[0] = rs.getString("commit_id"); // Commit ID
-                buildInfo[1] = rs.getString("build_date"); // Build Date
-                buildInfo[2] = rs.getString("build_logs"); // Build Logs
-                return buildInfo;
-            }
-            System.out.println();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-            return null; // Return null if no build information was found
-    }
-
 }

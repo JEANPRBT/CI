@@ -16,14 +16,13 @@ public final class Database{
     private Connection conn = null;
     /**
      * Establish connection to database. Then create a table if it does not exist. 
+     * Input is the url to the database, for example
+     * "jdbc:sqlite:build_history.db";
      * 
      */
-    public Database(){
+    public Database(String url){
         
         try {
-            // db parameters
-            String url = "jdbc:sqlite:build_history.db";
-
             // create a connection to the database
             conn = DriverManager.getConnection(url);
             System.out.println("Connection to SQLite has been established.");
@@ -66,7 +65,7 @@ public final class Database{
      * @param build_date
      * @param build_logs
      */
-    public void insertBuild(Connection conn, String commit_id, String build_date,String build_logs){
+    public ErrorCode insertBuild(Connection conn, String commit_id, String build_date,String build_logs){
         String sql = "INSERT INTO build_history (commit_id, build_date, build_logs) VALUES ( ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, commit_id);
@@ -74,10 +73,39 @@ public final class Database{
             pstmt.setString(3, build_logs);
             pstmt.executeUpdate();
             System.out.println("Values inserted into the build_history table successfully.");
+            return ErrorCode.SUCCESS;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return ErrorCode.ERROR_INSERT_DB;
+        }
+    }
+
+      /**
+     * Get the build info for a specific commit
+     * @param commitId
+     * @return buildInfo, an array {commit_id, build_date, build_logs}
+     */
+    public String[] getBuildInfoByCommitId(String commitId) {
+        String sql = "SELECT * FROM build_history WHERE commit_id = '" + commitId + "'";
+        try (Statement stmt = this.conn.createStatement()){
+            System.out.println("Trying to get build info for " + commitId);
+            // Execute the query and obtain the result set
+            ResultSet rs = stmt.executeQuery(sql);
+            
+            // Process the result set
+            if (rs.next()) {
+                String[] buildInfo = new String[3];
+                buildInfo[0] = rs.getString("commit_id"); // Commit ID
+                buildInfo[1] = rs.getString("build_date"); // Build Date
+                buildInfo[2] = rs.getString("build_logs"); // Build Logs
+                return buildInfo;
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
+            return null; // Return null if no build information was found
     }
+
     /**
      * Fetches data from all entries in the database's table
      * @return builds: a list of arrays {commit_id, build_date, build_logs}
@@ -99,8 +127,7 @@ public final class Database{
         e.printStackTrace();
     }
     return builds;
-}
-
+    }
 
 }
 

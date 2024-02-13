@@ -17,6 +17,10 @@ public enum ErrorCode {
     // An error occurred while building the project
     ERROR_BUILD,
 
+    // An error occured while trying to insert a value in db
+    ERROR_INSERT_DB,
+
     // The build was successful
-    SUCCESS
+    SUCCESS,
+
 }
