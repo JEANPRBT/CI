@@ -4,13 +4,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Objects;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
 
 class CIServerTest {
 
@@ -22,7 +20,7 @@ class CIServerTest {
      */
     @BeforeAll
     static void startServer() {
-        server = new CIServer(8080, "/", buildDirectory);
+        server = new CIServer(8029, "/", buildDirectory);
     }
 
     /**
@@ -51,8 +49,8 @@ class CIServerTest {
      */
     @Test
     public void parseResponsePositiveTest(){
-        String json = "{\"ref\":\"refs/heads/testing_value_ref\", \"repository\": {\"url\": \"https://testing_value_url\", \"full_name\":\"owner/repo\"}, \"after\":\"SHA\"}";
-        String[] expected = new String[]{"https://testing_value_url", "testing_value_ref", "owner/repo", "SHA"};
+        String json = "{\"ref\":\"refs/heads/testing_value_ref\", \"repository\": {\"url\": \"https://testing_value_url\",\"head_commit\": {\"url\": \"https://testing_value_url/123\",\"head_commit\": {\"timestamp\": \"2024-02-12T10:17:49+01:00\"}}";
+        String[] expected = new String[]{"https://testing_value_url", "testing_value_ref", "123", "024-02-12T10:17:49+01:00"};
         try {
             assertArrayEquals(expected, server.parseResponse(json), "JSON string was not parsed correctly.");
         } catch (org.json.JSONException e){
@@ -110,13 +108,12 @@ class CIServerTest {
     /**
      * Test for method `triggerBuild`
      * Checks that when an invalid build is triggered the method returns ERROR_BUILD.
-     */
+    */
     @Test
     public void triggerInvalidBuild(){
-        ClassLoader classLoader = getClass().getClassLoader();
+        File repository = new File("src/test/resources/invalid_build");
         try {
-            String filePath = Objects.requireNonNull(classLoader.getResource("invalid_build")).getFile();
-            ErrorCode exitCodeBuild = server.triggerBuild(filePath);
+            ErrorCode exitCodeBuild = server.triggerBuild(repository.getAbsolutePath());
             assertEquals(ErrorCode.ERROR_BUILD, exitCodeBuild, "An invalid build was successful.");
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
@@ -130,10 +127,9 @@ class CIServerTest {
      */
     @Test
     public void triggerValidBuild(){
-        ClassLoader classLoader = getClass().getClassLoader();
+        File repository = new File("src/test/resources/valid_build");
         try {
-            String filePath = Objects.requireNonNull(classLoader.getResource("valid_build")).getFile();
-            ErrorCode exitCodeBuild = server.triggerBuild(filePath);
+            ErrorCode exitCodeBuild = server.triggerBuild(repository.getAbsolutePath());
             assertEquals(ErrorCode.SUCCESS, exitCodeBuild, "A valid build was not successful.");
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
@@ -147,10 +143,9 @@ class CIServerTest {
      */
     @Test
     public void repoWithoutTests(){
-        ClassLoader classLoader = getClass().getClassLoader();
+        File repository = new File("src/test/resources/valid_build");
         try {
-            String filePath = Objects.requireNonNull(classLoader.getResource("valid_build")).getFile();
-            ErrorCode exitCodeTest = server.triggerTesting(filePath);
+            ErrorCode exitCodeTest = server.triggerTesting(repository.getAbsolutePath());
             assertEquals(ErrorCode.NO_TESTS, exitCodeTest, "Testing for a project without tests was triggered.");
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
@@ -164,11 +159,9 @@ class CIServerTest {
      */
     @Test
     public void triggerValidTests(){
-        ClassLoader classLoader = getClass().getClassLoader();
-        String filePath = Objects.requireNonNull(classLoader.getResource("valid_tests")).getFile();
-        ErrorCode exitCodeTest = server.triggerTesting(filePath);
+        File repository = new File("src/test/resources/valid_tests");
+        ErrorCode exitCodeTest = server.triggerTesting(repository.getAbsolutePath());
         assertEquals(ErrorCode.SUCCESS, exitCodeTest, "Testing for valid tests failed.");
-
     }
 
     /**
@@ -177,10 +170,9 @@ class CIServerTest {
      */
     @Test
     public void triggerInvalidTests(){
-        ClassLoader classLoader = getClass().getClassLoader();
+        File repository = new File("src/test/resources/invalid_tests");
         try {
-            String filePath = Objects.requireNonNull(classLoader.getResource("invalid_tests")).getFile();
-            ErrorCode exitCodeTest = server.triggerTesting(filePath);
+            ErrorCode exitCodeTest = server.triggerTesting(repository.getAbsolutePath());
             assertEquals(ErrorCode.ERROR_TEST, exitCodeTest, "Testing for invalid tests was successful.");
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
@@ -194,18 +186,34 @@ class CIServerTest {
      */
     @Test
     public void statusValidCommitId(){
-        ErrorCode expectedCode = server.setCommitStatus(ErrorCode.SUCCESS, "rickardo-cornelli/testRepo","653cc3fc1350e2f3419850dc6e253950172eeb2f", "test", "valid commit test");
+        ErrorCode expectedCode = server.setCommitStatus(
+                ErrorCode.SUCCESS,
+                "rickardo-cornelli/testRepo",
+                "653cc3fc1350e2f3419850dc6e253950172eeb2f",
+                "test",
+                "valid commit test"
+        );
         assertEquals(ErrorCode.SUCCESS, expectedCode, "Setting commit status failed");
     }
 
     /**
      * Test for method 'setCommitStatus'
-     * Checks that when setting the status of an non-existent commit, the method returns ERROR_STATUS
+     * Checks that when setting the status of a non-existent commit, the method returns ERROR_STATUS
      */
     @Test
     public void statusInvalidCommitId(){
-        ErrorCode expectedCode = server.setCommitStatus(ErrorCode.SUCCESS, "rickardo-cornelli/testRepo","abc", "test", "invalid commit test");
-        assertEquals(ErrorCode.ERROR_STATUS, expectedCode, expectedCode == ErrorCode.SUCCESS? "Setting commit status of non-existent commit succeeded" : "Error while trying to set commit status of invalid commit");
+        ErrorCode expectedCode = server.setCommitStatus(
+                ErrorCode.SUCCESS,
+                "rickardo-cornelli/testRepo",
+                "abc",
+                "test",
+                "invalid commit test"
+        );
+        assertEquals(ErrorCode.ERROR_STATUS, expectedCode,
+                expectedCode == ErrorCode.SUCCESS?
+                        "Setting commit status of non-existent commit succeeded." :
+                        "Error while trying to set commit status of invalid commit."
+        );
     }
 
     /**
@@ -214,7 +222,16 @@ class CIServerTest {
      */
     @Test
     public void statusRepoWithoutAccess(){
-        ErrorCode expectedCode = server.setCommitStatus(ErrorCode.SUCCESS, "noPermissions/repo","abc", "test", "invalid commit test");
-        assertEquals(ErrorCode.ERROR_STATUS, expectedCode, expectedCode == ErrorCode.SUCCESS? "Setting commit status of repo without access succeeded" : "Error while trying to set commit status of repo without access");
+        ErrorCode expectedCode = server.setCommitStatus(ErrorCode.SUCCESS,
+                "noPermissions/repo",
+                "abc",
+                "test",
+                "invalid commit test"
+        );
+        assertEquals(ErrorCode.ERROR_STATUS, expectedCode,
+                expectedCode == ErrorCode.SUCCESS?
+                        "Setting commit status of repo without access succeeded." :
+                        "Error while trying to set commit status of repo without access."
+        );
     }
 }

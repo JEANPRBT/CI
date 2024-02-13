@@ -9,19 +9,29 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+// Library for timestamp
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+// Regex
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 // Recursive directory deletion
 import org.apache.commons.io.FileUtils;
-// JSON parsing utilities
-import org.json.JSONObject;
 
 // JSON parsing utilities
 import org.json.JSONObject;
+
 
 /**
  * Class representing our CI server which handles all incoming webhooks using HTTP methods.
  * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
  */
 public final class CIServer {
+
+    private final Database db;
 
     /**
      * Public constructor for a CI server.
@@ -33,13 +43,105 @@ public final class CIServer {
 
         // Set up port to listen on
         port(port);
+        db = new Database("jdbc:sqlite:build_history.db");
 
-        // ------------------------------- Launching the server ------------------------------- //
-        get(endpoint, (req, res) -> {
-            System.out.println("GET request received.");
-            return "CI Server for Java Projects with Gradle.";
+
+        // ---------------------------- Launching the server by configuring routes ---------------------------- //
+
+        // Route for a specific build
+        get(endpoint + "/builds/:commitId", (req, res) -> {
+
+            String commitId = req.params(":commitId");
+            System.out.println("Fetching build info for commitId: " + commitId);
+
+            // Fetch build info for specific build
+            String[] buildInfo = db.getBuild(commitId);
+            if (buildInfo != null) {
+                System.out.println("Build info found for commitId: " + commitId);
+                res.type("text/html");
+                return String.format("""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        table { width: 100%%; border-collapse: collapse; }
+                        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+                        th { background-color: #4CAF50; color: white; }
+                        tr:nth-child(even) { background-color: #f2f2f2; }
+                        tr:hover { background-color: #ddd; }
+                        pre { white-space: pre-wrap; word-wrap: break-word; }
+                    </style>
+                    </head>
+                    <body>
+                    <table>
+                    <tr><th>Commit ID</th><th>Build Date</th><th>Build Logs</th></tr>
+                    <tr>
+                        <td>%s</td> <!-- Commit ID -->
+                        <td>%s</td> <!-- Build Date -->
+                        <td><pre>%s</pre></td> <!-- Build Logs -->
+                    </tr>
+                    </table>
+                    </body>
+                    </html>
+                    """, buildInfo[0], buildInfo[1], buildInfo[2]);
+            } else {
+                System.out.println("No build info found for commitId: " + commitId);
+                res.status(404);
+                return "<!DOCTYPE html><html><head><title>Not Found</title></head>" +
+                        "<body><h1>404 Not Found</h1>" +
+                        "<p>Build information not found for commit ID: " + commitId + "</p>" +
+                        "</body></html>";
+            }
         });
 
+        // Route for all build history
+        get(endpoint + "/builds", (req, res) -> {
+            List<String[]> allBuilds = db.getAllBuilds();
+            StringBuilder html = new StringBuilder("""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                <title>Build history</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    table { width: 100%; border-collapse: separate; border-spacing: 0; } /* Adjusted */
+                    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; border-right: 1px solid #ddd; } /* Adjusted */
+                    th { background-color: #4CAF50; color: white; border-right: 1px solid #ddd; } /* Adjusted */
+                    tr:nth-child(even) { background-color: #f2f2f2; }
+                    tr:hover { background-color: #ddd; }
+                    pre { white-space: pre-wrap; word-wrap: break-word; }
+                    th, tr:first-child th, tr:first-child td { border-top: 1px solid #ddd; } /* New */
+                    td, th { border-left: 1px solid #ddd; } /* New */
+                    td:first-child, th:first-child { border-left: none; } /* New */
+                </style>
+                </head>
+                <body>
+                <h1>All Build Information</h1>
+                <table>
+                <tr><th>Commit ID</th><th>Build Date</th><th>Build Logs</th></tr>
+                """);
+
+                for (String[] build : allBuilds) {
+                    html.append(String.format("""
+                        <tr>
+                            <td><a href="./builds/%s">%s</a></td>
+                            <td>%s</td>
+                            <td><pre>%s</pre></td>
+                        </tr>
+                        """, build[0], build[0], build[1], build[2]));
+                }
+
+                html.append("""
+                    </table>
+                    </body>
+                    </html>
+                    """);
+                res.type("text/html");
+                return html.toString();
+            });
+
+        // Route for receiving webhooks
         post(endpoint, (req, res) -> {
             System.out.println("POST request received.");
             try {
@@ -54,7 +156,7 @@ public final class CIServer {
                         System.out.println("Running tests..");
                         exitCode = triggerTesting(buildDirectory);
                         if (exitCode == ErrorCode.SUCCESS) {
-                            setCommitStatus(exitCode, parameters[2], parameters[3], "ci testing", "testing  succeeded");
+                            setCommitStatus(exitCode, parameters[2], parameters[3], "ci testing", "testing succeeded");
                         } else {
                             setCommitStatus(exitCode, parameters[2], parameters[3], "ci testing", "testing failed");
                         }
@@ -63,10 +165,13 @@ public final class CIServer {
                     }
                     FileUtils.deleteDirectory(new File(buildDirectory));
                     System.out.println("Build directory deleted.");
-                }
-                else {
+                } else {
                     setCommitStatus(exitCode, parameters[2], parameters[3], "ci build", "cloning repo failed");
                 }
+
+                String buildLog = Utils.readFromFile("build.log");
+                db.insertBuild(parameters[2], parameters[3], buildLog);
+
             } catch (org.json.JSONException e) {
                 System.out.println("Error while parsing JSON. \n" + e.getMessage());
             } catch (IOException e) {
@@ -78,19 +183,33 @@ public final class CIServer {
         System.out.println("Server started...");
     }
 
+
     /**
-     * Method for parsing JSON response from GitHub webhook into relevant
-     * parameters for triggering build process.
+     * Method for parsing JSON response from GitHub webhook
+     * into relevant parameters.
      * @param response String : the request body to be parsed
-     * @return String[] : an array containing the repository URL and the branch name
+     * @return String[] : an array containing the repository URL, the branch name, the commit ID and the timestamp
      */
-    public String[] parseResponse(String response) throws org.json.JSONException{
+    public String[] parseResponse(String response) throws org.json.JSONException {
         JSONObject obj = new JSONObject(response);
-        String repoURL = obj.getJSONObject("repository").getString("url");
         String branch = obj.getString("ref").substring("refs/heads/".length());
-        String repoName = obj.getJSONObject("repository").getString("full_name");
-        String mostRecentCommit = obj.getString("after");
-        return new String[]{repoURL, branch, repoName, mostRecentCommit};
+        String repoURL = obj.getJSONObject("repository").getString("url");
+        String url = obj.getJSONObject("head_commit").getString("url");
+
+        // commit ID
+        Pattern pattern = Pattern.compile("/commit/([a-fA-F0-9]+)");
+        Matcher matcher = pattern.matcher(url);
+        String commitID = "";
+        if (matcher.find()) {
+            commitID = matcher.group(1);
+        }
+
+        // timestamp
+        LocalDateTime currentDateTime = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String timestamp = currentDateTime.format(formatter);
+
+        return new String[]{repoURL, branch, commitID, timestamp};
     }
 
     /**
@@ -131,10 +250,12 @@ public final class CIServer {
      */
     public ErrorCode triggerBuild(String buildDirectory){
         File repoDirectory = new File(buildDirectory);
+        System.out.println("Building repository in " + buildDirectory);
         if (repoDirectory.exists() && repoDirectory.isDirectory()) {
             String[] buildCommand = new String[]{"./gradlew",  "build", "-x", "test"};
             try {
                 Process buildProcess = Runtime.getRuntime().exec(buildCommand, null, repoDirectory);
+                Utils.writeToFile(buildProcess.getInputStream(), "build.log");
                 int buildExitCode = buildProcess.waitFor();
                 if (buildExitCode == 0) {
                     System.out.println("Build succeeded.");
@@ -168,6 +289,7 @@ public final class CIServer {
             String[] testCommand = new String[]{"./gradlew",  "test"};
             try {
                 Process testProcess = Runtime.getRuntime().exec(testCommand, null, testDir);
+                Utils.writeToFile(testProcess.getInputStream(), "build.log");
                 int testExitCode = testProcess.waitFor();
                 if (testExitCode == 0) {
                     System.out.println("Tests succeeded.");
@@ -185,78 +307,62 @@ public final class CIServer {
     }
 
     /**
-     * Method for setting status of a commit
-     * @param code result of previous operations
-     * @param repoName name of repositroy
-     * @param sha id of commit
-     * @param context a string label to differentiate this status from the status of other systems. 
-     * @param desc a short description of the status.
+     * Method for setting the commit status after running the build and tests.
+     * @param code ErrorCode: result of previous operations
+     * @param repoName String: name of repository
+     * @param sha String: id of commit
+     * @param context String: a string label to differentiate this status from the status of other systems
+     * @param desc String: a short description of the status
      * @return ErrorCode : exit code of the operation
      */
     ErrorCode setCommitStatus(ErrorCode code, String repoName, String sha, String context, String desc){
-        String token = "";
-        if (repoName.contains("JEANPRBT")) {
-             token = "11APXT2FI056N0OHxXZY0R_cIx1HsKGsaD07M7zppm6rWLSX33ULJLRXMAp4nADVTxF4D6K5ET0xmJSn62";
-        } else if (repoName.contains("rickardo-cornelli")) {
-            token = "11ASH6MUI0Y23d08dPLkwi_WdzkEkEvNcLScCaUGus4EtHMPACst8VeXetnvLFIZX9CIUO74NYSiAnebtC";
+        String projectRepo = "JEANPRBT",
+                testRepo = "rickardo-cornelli",
+                projectToken = "11APXT2FI056N0OHxXZY0R_cIx1HsKGsaD07M7zppm6rWLSX33ULJLRXMAp4nADVTxF4D6K5ET0xmJSn62",
+                testToken = "11ASH6MUI0Y23d08dPLkwi_WdzkEkEvNcLScCaUGus4EtHMPACst8VeXetnvLFIZX9CIUO74NYSiAnebtC";
+        String token;
+        if (repoName.contains(projectRepo)) {
+             token = projectToken;
+        } else if (repoName.contains(testRepo)) {
+            token = testToken;
         } else {
             System.err.println("Missing authorization token");
             return ErrorCode.ERROR_STATUS;
         }
-        String auth = "Authorization: Bearer github_pat_"+token,
+        String auth = "Authorization: Bearer github_pat_" + token,
             state = code == ErrorCode.SUCCESS ? "success" : "failure",
             mes = "{\"state\":\"" + state + "\",\"context\":\""+context+"\",\"description\":\""+desc+"\"}",
             url = "https://api.github.com/repos/" + repoName+ "/statuses/" + sha;
 
         try {
             String[] command = {
-                "curl",
-                "-v",
-                "-Li",
-                "-X",
-                "POST",
-                "-H",
-                "Accept: application/vnd.github+json",
-                "-H",
-                auth,
-                "-H",
-                "X-GitHub-Api-Version: 2022-11-28",
-                url,
-                "-d",
-                mes
+                "curl", "-v", "-Li",
+                "-X", "POST",
+                "-H", "Accept: application/vnd.github+json",
+                "-H", auth,
+                "-H", "X-GitHub-Api-Version: 2022-11-28", url,
+                "-d", mes
             };
-            // Create ProcessBuilder instance
-            ProcessBuilder processBuilder = new ProcessBuilder(command);
 
-            // Redirect error stream to output stream for debugging
-            // processBuilder.redirectErrorStream(true);
-
-            // Start the process
-            Process process = processBuilder.start();
+            Process process = Runtime.getRuntime().exec(command);
 
             // Read the output
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line;
-            // Read all input for debugging
-            /* while ((line = reader.readLine()) != null) {
-                System.out.println(line);
-            } */
-            line = reader.readLine();
+            String line = reader.readLine();
 
             // Wait for the process to finish
             int exitCode = process.waitFor();
             if (exitCode == 0 && line.contains("HTTP/2 201")) {
                 return ErrorCode.SUCCESS;
             } else {
-                System.out.println("Curl command executed with exit code: " + exitCode);
+                System.out.println("Curl command executed with exit code : " + exitCode);
                 if (line != null) {
-                    System.out.println("Http status: " + line);
+                    System.out.println("HTTP status : " + line);
                 }
                 return ErrorCode.ERROR_STATUS;
             }
-
         } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
+            System.err.println("Error while setting commit status. " + e.getMessage());
             return ErrorCode.ERROR_IO;
         }
     }
