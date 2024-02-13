@@ -13,7 +13,6 @@ import java.io.InputStreamReader;
 import org.apache.commons.io.FileUtils;
 // JSON parsing utilities
 import org.json.JSONObject;
-//import org.kohsuke.github.*;
 
 // JSON parsing utilities
 import org.json.JSONObject;
@@ -53,9 +52,19 @@ public final class CIServer {
                     if (exitCode == ErrorCode.SUCCESS) {
                         System.out.println("Running tests..");
                         exitCode = triggerTesting(buildDirectory);
+                        if (exitCode == ErrorCode.SUCCESS) {
+                            setCommitStatus(exitCode, parameters[2], parameters[3], "ci", "build and testing succeeded");
+                        } else {
+                            setCommitStatus(exitCode, parameters[2], parameters[3], "ci", "testing failed");
+                        }
+                    } else {
+                        setCommitStatus(exitCode, parameters[2], parameters[3], "ci", "build failed");
                     }
                     FileUtils.deleteDirectory(new File(buildDirectory));
                     System.out.println("Build directory deleted.");
+                }
+                else {
+                    setCommitStatus(exitCode, parameters[2], parameters[3], "ci", "cloning repo failed");
                 }
             } catch (org.json.JSONException e) {
                 System.out.println("Error while parsing JSON. \n" + e.getMessage());
@@ -66,7 +75,6 @@ public final class CIServer {
         });
 
         System.out.println("Server started...");
-        setCommitStatus(ErrorCode.SUCCESS);
     }
 
     /**
@@ -79,7 +87,9 @@ public final class CIServer {
         JSONObject obj = new JSONObject(response);
         String repoURL = obj.getJSONObject("repository").getString("url");
         String branch = obj.getString("ref").substring("refs/heads/".length());
-        return new String[]{repoURL, branch};
+        String repoName = obj.getJSONObject("repository").getString("full_name");
+        String mostRecentCommit = obj.getString("after");
+        return new String[]{repoURL, branch, repoName, mostRecentCommit};
     }
 
     /**
@@ -142,59 +152,6 @@ public final class CIServer {
         }
     }
 
-    /*
-     curl -Li -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer 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" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/Lola20b/dh2642_project/statuses/409a1817ca2a06655b2f3775dff1250163ddeafa -d '{"state":"pending","description":"Test"}'
-     */
-    ErrorCode setCommitStatus(ErrorCode code){
-        String token = "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", //
-               owner = "Lola20b", //
-               repo = "dh2642_project", //
-               sha = "409a1817ca2a06655b2f3775dff1250163ddeafa";    
-        String state = code == ErrorCode.SUCCESS ? "success" : "failure";
-        String mes = "{\"state\":\"" + state + "\",\"description\":\"Test\"}";
-        String url = "https://api.github.com/repos/" + owner + "/" + repo + "/statuses/" + sha;
-        try {
-            String[] command = {
-                "curl",
-                "-Li",
-                "-X",
-                "POST",
-                "-H",
-                "\"Accept: application/vnd.github+json\"",
-                "-H",
-                "\"Authorization: Bearer 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\"",
-                "-H",
-                "\"X-GitHub-Api-Version: 2022-11-28\"",
-                "https://api.github.com/repos/Lola20b/dh2642_project/statuses/409a1817ca2a06655b2f3775dff1250163ddeafa",
-                "-d",
-                "{\\\"state\\\":\\\"pending\\\",\\\"description\\\":\\\"Test\\\"}"
-            };
-            // Create ProcessBuilder instance
-            ProcessBuilder processBuilder = new ProcessBuilder(command);
-
-            // Redirect error stream to output stream
-            processBuilder.redirectErrorStream(true);
-
-            // Start the process
-            Process process = processBuilder.start();
-
-            // Read the output
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                System.out.println(line);
-            }
-
-            // Wait for the process to finish
-            int exitCode = process.waitFor();
-            System.out.println("Curl command executed with exit code: " + exitCode);
-
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-        }
-        return code;
-    }
-
     /**
      * Method for running tests in the `testDirectory`.
      * @param testDirectory String : the directory in which to run the tests
@@ -224,6 +181,75 @@ public final class CIServer {
             }
         }
         return ErrorCode.ERROR_IO;
+    }
+
+    /**
+     * Method for setting status of a commit
+     * @param code result of previous operations
+     * @param repoName name of repositroy
+     * @param sha id of commit
+     * @param context a string label to differentiate this status from the status of other systems. 
+     * @param desc a short description of the status.
+     * @return ErrorCode : exit code of the operation
+     */
+    ErrorCode setCommitStatus(ErrorCode code, String repoName, String sha, String context, String desc){
+        String token = "11AEWS3IY0ovpurtpDfnRs_pmqMIWPl5eZvqUhf2lvlhxeryIMZgJLPsYKJzfQbNo6M4VTRWM6eKL5Wqn0",
+            auth = "Authorization: Bearer github_pat_"+token,
+            state = code == ErrorCode.SUCCESS ? "success" : "failure",
+            mes = "{\"state\":\"" + state + "\",\"context\":\""+context+"\",\"description\":\""+desc+"\"}",
+            url = "https://api.github.com/repos/" + repoName+ "/statuses/" + sha;
+
+        try {
+            String[] command = {
+                "curl",
+                "-v",
+                "-Li",
+                "-X",
+                "POST",
+                "-H",
+                "Accept: application/vnd.github+json",
+                "-H",
+                auth,
+                "-H",
+                "X-GitHub-Api-Version: 2022-11-28",
+                url,
+                "-d",
+                mes
+            };
+            // Create ProcessBuilder instance
+            ProcessBuilder processBuilder = new ProcessBuilder(command);
+
+            // Redirect error stream to output stream for debugging
+            // processBuilder.redirectErrorStream(true);
+
+            // Start the process
+            Process process = processBuilder.start();
+
+            // Read the output
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            // Read all input for debugging
+            /* while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            } */
+            line = reader.readLine();
+
+            // Wait for the process to finish
+            int exitCode = process.waitFor();
+            if (exitCode == 0 && line.contains("HTTP/2 201")) {
+                return ErrorCode.SUCCESS;
+            } else {
+                System.out.println("Curl command executed with exit code: " + exitCode);
+                if (line != null) {
+                    System.out.println("Http status: " + line);
+                }
+                return ErrorCode.ERROR_STATUS;
+            }
+
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+            return ErrorCode.ERROR_IO;
+        }
     }
 
     // ------------------------------- Helper methods ------------------------------- //

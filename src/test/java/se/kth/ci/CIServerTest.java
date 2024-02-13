@@ -144,13 +144,13 @@ class CIServerTest {
     @Test
     public void statusValidCommit(){
         try {
-            ErrorCode expectedCode = server.setCommitStatus(ErrorCode.SUCCESS);
-            assertEquals(ErrorCode.SUCCESS, expectedCode);
+            ErrorCode expectedCode = server.setCommitStatus(ErrorCode.SUCCESS, "Lola20b/dh2642_project","409a1817ca2a06655b2f3775dff1250163ddeafa", "test", "valid commit test");
+            assertEquals(ErrorCode.SUCCESS, expectedCode, "Setting commit status failed");
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
         }
     }
-    
+
     /**
      * Test for method `triggerTesting`
      * Checks that when a project does not contain tests, the method returns NO_TESTS 
