@@ -50,12 +50,13 @@ public final class CIServer {
                     System.out.println("Running build...");
                     exitCode = triggerBuild(buildDirectory);
                     if (exitCode == ErrorCode.SUCCESS) {
+                        setCommitStatus(exitCode, parameters[2], parameters[3], "ci build", "build succeeded");
                         System.out.println("Running tests..");
                         exitCode = triggerTesting(buildDirectory);
                         if (exitCode == ErrorCode.SUCCESS) {
-                            setCommitStatus(exitCode, parameters[2], parameters[3], "ci", "build and testing succeeded");
+                            setCommitStatus(exitCode, parameters[2], parameters[3], "ci testing", "testing  succeeded");
                         } else {
-                            setCommitStatus(exitCode, parameters[2], parameters[3], "ci", "testing failed");
+                            setCommitStatus(exitCode, parameters[2], parameters[3], "ci testing", "testing failed");
                         }
                     } else {
                         setCommitStatus(exitCode, parameters[2], parameters[3], "ci", "build failed");
@@ -64,7 +65,7 @@ public final class CIServer {
                     System.out.println("Build directory deleted.");
                 }
                 else {
-                    setCommitStatus(exitCode, parameters[2], parameters[3], "ci", "cloning repo failed");
+                    setCommitStatus(exitCode, parameters[2], parameters[3], "ci build", "cloning repo failed");
                 }
             } catch (org.json.JSONException e) {
                 System.out.println("Error while parsing JSON. \n" + e.getMessage());
@@ -193,7 +194,7 @@ public final class CIServer {
      * @return ErrorCode : exit code of the operation
      */
     ErrorCode setCommitStatus(ErrorCode code, String repoName, String sha, String context, String desc){
-        String token = "11AEWS3IY0ovpurtpDfnRs_pmqMIWPl5eZvqUhf2lvlhxeryIMZgJLPsYKJzfQbNo6M4VTRWM6eKL5Wqn0",
+        String token = "11ASH6MUI0Y23d08dPLkwi_WdzkEkEvNcLScCaUGus4EtHMPACst8VeXetnvLFIZX9CIUO74NYSiAnebtC",
             auth = "Authorization: Bearer github_pat_"+token,
             state = code == ErrorCode.SUCCESS ? "success" : "failure",
             mes = "{\"state\":\"" + state + "\",\"context\":\""+context+"\",\"description\":\""+desc+"\"}",

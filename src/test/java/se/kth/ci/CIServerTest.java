@@ -141,16 +141,6 @@ class CIServerTest {
 
     }
 
-    @Test
-    public void statusValidCommit(){
-        try {
-            ErrorCode expectedCode = server.setCommitStatus(ErrorCode.SUCCESS, "Lola20b/dh2642_project","409a1817ca2a06655b2f3775dff1250163ddeafa", "test", "valid commit test");
-            assertEquals(ErrorCode.SUCCESS, expectedCode, "Setting commit status failed");
-        } catch (NullPointerException e){
-            System.err.println("Error while getting file path.");
-        }
-    }
-
     /**
      * Test for method `triggerTesting`
      * Checks that when a project does not contain tests, the method returns NO_TESTS 
@@ -195,5 +185,26 @@ class CIServerTest {
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
         }
+    }
+
+
+    /**
+     * Test for method 'setCommitStatus'
+     * Checks that when setting the status of an existing commit, the method returns SUCCESS
+     */
+    @Test
+    public void statusValidCommitId(){
+        ErrorCode expectedCode = server.setCommitStatus(ErrorCode.SUCCESS, "rickardo-cornelli/testRepo","653cc3fc1350e2f3419850dc6e253950172eeb2f", "test", "valid commit test");
+        assertEquals(ErrorCode.SUCCESS, expectedCode, "Setting commit status failed");
+    }
+
+    /**
+     * Test for method 'setCommitStatus'
+     * Checks that when setting the status of an non-existent commit, the method returns ERROR_STATUS
+     */
+    @Test
+    public void statusInvalidCommitId(){
+        ErrorCode expectedCode = server.setCommitStatus(ErrorCode.SUCCESS, "rickardo-cornelli/testRepo","abc", "test", "invalid commit test");
+        assertEquals(ErrorCode.ERROR_STATUS, expectedCode, expectedCode == ErrorCode.SUCCESS? "Setting commit status of non-existent commit succeeded" : "Error while trying to set commit of invalid commit");
     }
 }
