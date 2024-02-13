@@ -159,7 +159,7 @@ public final class CIServer {
                 String buildLog = Utils.readLogFileToString("build.log");
                 System.out.println(buildLog);
                 // allBuildInfo returns {commitID, timeStamp}
-                ErrorCode insertExitCode = mydb.insertBuild(mydb.getConnection(), parameters[2], parameters[3], buildLog);
+                ErrorCode insertExitCode = mydb.insertBuild(parameters[2], parameters[3], buildLog);
                 if(insertExitCode == ErrorCode.SUCCESS){
                     System.out.println("Insert into DB was succesful");
                 }

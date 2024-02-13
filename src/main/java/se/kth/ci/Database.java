@@ -65,7 +65,7 @@ public final class Database{
      * @param build_date
      * @param build_logs
      */
-    public ErrorCode insertBuild(Connection conn, String commit_id, String build_date,String build_logs){
+    public ErrorCode insertBuild(String commit_id, String build_date,String build_logs){
         String sql = "INSERT INTO build_history (commit_id, build_date, build_logs) VALUES ( ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, commit_id);
