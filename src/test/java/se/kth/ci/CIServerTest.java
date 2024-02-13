@@ -205,6 +205,16 @@ class CIServerTest {
     @Test
     public void statusInvalidCommitId(){
         ErrorCode expectedCode = server.setCommitStatus(ErrorCode.SUCCESS, "rickardo-cornelli/testRepo","abc", "test", "invalid commit test");
-        assertEquals(ErrorCode.ERROR_STATUS, expectedCode, expectedCode == ErrorCode.SUCCESS? "Setting commit status of non-existent commit succeeded" : "Error while trying to set commit of invalid commit");
+        assertEquals(ErrorCode.ERROR_STATUS, expectedCode, expectedCode == ErrorCode.SUCCESS? "Setting commit status of non-existent commit succeeded" : "Error while trying to set commit status of invalid commit");
+    }
+
+    /**
+     * Test for method 'setCommitStatus'
+     * Checks that the method returns ERROR_STATUS when trying to set commit status for a repo the CI server doesn't have access to set commit statuses for
+     */
+    @Test
+    public void statusRepoWithoutAccess(){
+        ErrorCode expectedCode = server.setCommitStatus(ErrorCode.SUCCESS, "noPermissions/repo","abc", "test", "invalid commit test");
+        assertEquals(ErrorCode.ERROR_STATUS, expectedCode, expectedCode == ErrorCode.SUCCESS? "Setting commit status of repo without access succeeded" : "Error while trying to set commit status of repo without access");
     }
 }

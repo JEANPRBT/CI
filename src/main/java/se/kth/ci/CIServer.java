@@ -194,8 +194,16 @@ public final class CIServer {
      * @return ErrorCode : exit code of the operation
      */
     ErrorCode setCommitStatus(ErrorCode code, String repoName, String sha, String context, String desc){
-        String token = "11ASH6MUI0Y23d08dPLkwi_WdzkEkEvNcLScCaUGus4EtHMPACst8VeXetnvLFIZX9CIUO74NYSiAnebtC",
-            auth = "Authorization: Bearer github_pat_"+token,
+        String token = "";
+        if (repoName.contains("JEANPRBT")) {
+             token = "11APXT2FI056N0OHxXZY0R_cIx1HsKGsaD07M7zppm6rWLSX33ULJLRXMAp4nADVTxF4D6K5ET0xmJSn62";
+        } else if (repoName.contains("rickardo-cornelli")) {
+            token = "11ASH6MUI0Y23d08dPLkwi_WdzkEkEvNcLScCaUGus4EtHMPACst8VeXetnvLFIZX9CIUO74NYSiAnebtC";
+        } else {
+            System.err.println("Missing authorization token");
+            return ErrorCode.ERROR_STATUS;
+        }
+        String auth = "Authorization: Bearer github_pat_"+token,
             state = code == ErrorCode.SUCCESS ? "success" : "failure",
             mes = "{\"state\":\"" + state + "\",\"context\":\""+context+"\",\"description\":\""+desc+"\"}",
             url = "https://api.github.com/repos/" + repoName+ "/statuses/" + sha;
