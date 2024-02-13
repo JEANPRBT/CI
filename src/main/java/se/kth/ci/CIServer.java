@@ -245,6 +245,7 @@ public final class CIServer {
      */
     public ErrorCode triggerBuild(String buildDirectory){
         File repoDirectory = new File(buildDirectory);
+        System.out.println("Building repository in " + buildDirectory);
         if (repoDirectory.exists() && repoDirectory.isDirectory()) {
             String[] buildCommand = new String[]{"./gradlew",  "build", "-x", "test"};
             try {
