@@ -27,6 +27,11 @@ public enum ErrorCode {
     ERROR_BUILD,
 
     /**
+     * An error occurred while trying to insert a value in db
+     */
+    ERROR_INSERT_DB,
+
+    /**
      * An error occurred while testing the project
      */
     ERROR_TEST,
