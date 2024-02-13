@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 // Library for timestamp
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 
 // Regex
@@ -52,11 +53,7 @@ public final class CIServer {
 
         // Route for a specific build
         get(endpoint + "/builds/:commitId", (req, res) -> {
-
             String commitId = req.params(":commitId");
-            System.out.println("Fetching build info for commitId: " + commitId);
-
-            // Fetch build info for specific build
             String[] buildInfo = db.getBuild(commitId);
             if (buildInfo != null) {
                 System.out.println("Build info found for commitId: " + commitId);
@@ -100,6 +97,7 @@ public final class CIServer {
         // Route for all build history
         get(endpoint + "/builds", (req, res) -> {
             List<String[]> allBuilds = db.getAllBuilds();
+            Collections.reverse(allBuilds);
             StringBuilder html = new StringBuilder("""
                 <!DOCTYPE html>
                 <html>
@@ -148,36 +146,38 @@ public final class CIServer {
             System.out.println("POST request received.");
             try {
                 String[] parameters = parseResponse(req.body());
+                String repoURL = parameters[0],
+                        branchName = parameters[1],
+                        commitID = parameters[2],
+                        timestamp = parameters[3];
                 System.out.println("Cloning repository...");
-                ErrorCode exitCode = cloneRepository(parameters[0], parameters[1], buildDirectory);
+                ErrorCode exitCode = cloneRepository(repoURL, branchName, buildDirectory);
                 if (exitCode == ErrorCode.SUCCESS) {
                     System.out.println("Running build...");
                     exitCode = triggerBuild(buildDirectory);
                     if (exitCode == ErrorCode.SUCCESS) {
-                        setCommitStatus(exitCode, parameters[2], parameters[3], "ci build", "build succeeded");
+                        setCommitStatus(exitCode, repoURL, commitID, "ci build", "build succeeded");
                         System.out.println("Running tests..");
                         exitCode = triggerTesting(buildDirectory);
                         if (exitCode == ErrorCode.SUCCESS) {
-                            setCommitStatus(exitCode, parameters[2], parameters[3], "ci testing", "testing succeeded");
+                            setCommitStatus(exitCode, repoURL, commitID, "ci testing", "testing succeeded");
                         } else {
-                            setCommitStatus(exitCode, parameters[2], parameters[3], "ci testing", "testing failed");
+                            setCommitStatus(exitCode, repoURL, commitID, "ci testing", "testing failed");
                         }
                     } else {
-                        setCommitStatus(exitCode, parameters[2], parameters[3], "ci", "build failed");
+                        setCommitStatus(exitCode, repoURL, commitID, "ci", "build failed");
                     }
-                    FileUtils.deleteDirectory(new File(buildDirectory));
                     System.out.println("Build directory deleted.");
                 } else {
-                    setCommitStatus(exitCode, parameters[2], parameters[3], "ci build", "cloning repo failed");
+                    setCommitStatus(exitCode, repoURL, commitID, "ci build", "cloning repo failed");
                 }
-
                 String buildLog = Utils.readFromFile("build.log");
-                db.insertBuild(parameters[2], parameters[3], buildLog);
+                db.insertBuild(commitID, timestamp, buildLog);
 
             } catch (org.json.JSONException e) {
                 System.out.println("Error while parsing JSON. \n" + e.getMessage());
-            } catch (IOException e) {
-                System.out.println("Error while deleting build directory. \n" + e.getMessage());
+            } finally {
+                FileUtils.deleteDirectory(new File(buildDirectory));
             }
             return "";
         });
@@ -333,7 +333,7 @@ public final class CIServer {
         }
         String auth = "Authorization: Bearer github_pat_" + token,
             state = code == ErrorCode.SUCCESS ? "success" : "failure",
-            mes = "{\"state\":\"" + state + "\",\"context\":\""+context+"\",\"description\":\""+desc+"\"}",
+            mes = "{\"state\":\"" + state + "\",\"context\":\"" + context + "\",\"description\":\"" + desc + "\"}",
             url = "https://api.github.com/repos/" + repoName+ "/statuses/" + sha;
 
         try {
