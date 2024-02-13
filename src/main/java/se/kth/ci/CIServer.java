@@ -158,7 +158,7 @@ public final class CIServer {
                     exitCode = triggerBuild(buildDirectory);
                     if (exitCode == ErrorCode.SUCCESS) {
                         setCommitStatus(exitCode, repoName, commitID, "ci_build", "build succeeded");
-                        System.out.println("Running tests..");
+                        System.out.println("Running tests...");
                         exitCode = triggerTesting(buildDirectory);
                         if (exitCode == ErrorCode.SUCCESS) {
                             setCommitStatus(exitCode, repoName, commitID, "ci_test", "testing succeeded");
