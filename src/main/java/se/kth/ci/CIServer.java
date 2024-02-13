@@ -35,6 +35,7 @@ import org.json.JSONObject;
 public final class CIServer {
 
     private final Database db;
+    private final int port;
 
     /**
      * Public constructor for a CI server.
@@ -44,10 +45,9 @@ public final class CIServer {
      */
     public CIServer(int port, String endpoint, String buildDirectory) {
 
-        // Set up port to listen on
         port(port);
-        db = new Database("jdbc:sqlite:build_history.db");
-
+        this.port = port;
+        this.db = new Database("jdbc:sqlite:build_history.db");
 
         // ---------------------------- Launching the server by configuring routes ---------------------------- //
 
@@ -150,30 +150,28 @@ public final class CIServer {
                         branchName = parameters[1],
                         commitID = parameters[2],
                         timestamp = parameters[3];
+                String repoName = repoURL.substring("https://github.com/".length());
                 System.out.println("Cloning repository...");
                 ErrorCode exitCode = cloneRepository(repoURL, branchName, buildDirectory);
                 if (exitCode == ErrorCode.SUCCESS) {
                     System.out.println("Running build...");
                     exitCode = triggerBuild(buildDirectory);
                     if (exitCode == ErrorCode.SUCCESS) {
-                        setCommitStatus(exitCode, repoURL, commitID, "ci build", "build succeeded");
+                        setCommitStatus(exitCode, repoName, commitID, "ci_build", "build succeeded");
                         System.out.println("Running tests..");
                         exitCode = triggerTesting(buildDirectory);
                         if (exitCode == ErrorCode.SUCCESS) {
-                            setCommitStatus(exitCode, repoURL, commitID, "ci testing", "testing succeeded");
+                            setCommitStatus(exitCode, repoName, commitID, "ci_test", "testing succeeded");
                         } else {
-                            setCommitStatus(exitCode, repoURL, commitID, "ci testing", "testing failed");
+                            setCommitStatus(exitCode, repoName, commitID, "ci_test", "testing failed");
                         }
                     } else {
-                        setCommitStatus(exitCode, repoURL, commitID, "ci", "build failed");
+                        setCommitStatus(exitCode, repoName, commitID, "ci_build", "build failed");
                     }
                     System.out.println("Build directory deleted.");
-                } else {
-                    setCommitStatus(exitCode, repoURL, commitID, "ci build", "cloning repo failed");
                 }
                 String buildLog = Utils.readFromFile("build.log");
                 db.insertBuild(commitID, timestamp, buildLog);
-
             } catch (org.json.JSONException e) {
                 System.out.println("Error while parsing JSON. \n" + e.getMessage());
             } finally {
@@ -333,8 +331,14 @@ public final class CIServer {
         }
         String auth = "Authorization: Bearer github_pat_" + token,
             state = code == ErrorCode.SUCCESS ? "success" : "failure",
-            mes = "{\"state\":\"" + state + "\",\"context\":\"" + context + "\",\"description\":\"" + desc + "\"}",
-            url = "https://api.github.com/repos/" + repoName+ "/statuses/" + sha;
+            mes =
+                "{" +
+                    "\"target_url\":\"http://localhost:" + port + "/builds/" + sha + "\"," +
+                    "\"state\":\"" + state + "\"," +
+                    "\"context\":\"" + context + "\"," +
+                    "\"description\":\"" + desc + "\"" +
+                "}",
+            url = "https://api.github.com/repos/" + repoName + "/statuses/" + sha;
 
         try {
             String[] command = {
