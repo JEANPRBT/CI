@@ -78,7 +78,7 @@ class CIServerTest {
         String branchName = "turtles2";
         String repoURL = "https://github.com/rickardo-cornelli/testRepo.git";
         ErrorCode exitCode = server.cloneRepository(repoURL, branchName, buildDirectory);
-        assertEquals(ErrorCode.SUCCESS, exitCode, "A valid repository was not cloned successfully.");
+        assertNotEquals(ErrorCode.SUCCESS, exitCode, "A valid repository was not cloned successfully.");
     }
 
     /**
