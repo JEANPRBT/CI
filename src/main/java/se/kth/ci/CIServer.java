@@ -140,6 +140,7 @@ public final class CIServer {
                 return html.toString();
             });
 
+        // Route for the home page
         get(endpoint, (req, res) -> {
             String html = """
                 <!DOCTYPE html>
@@ -201,7 +202,7 @@ public final class CIServer {
                 String buildLog = Utils.readFromFile("build.log");
                 db.insertBuild(commitID, timestamp, buildLog);
             } catch (org.json.JSONException e) {
-                System.out.println("Error while parsing JSON. \n" + e.getMessage());
+                System.err.println("Error while parsing JSON. \n" + e.getMessage());
             } finally {
                 FileUtils.deleteDirectory(new File(buildDirectory));
             }
@@ -386,11 +387,12 @@ public final class CIServer {
 
             int exitCode = process.waitFor();
             if (exitCode == 0 && line.contains("HTTP/2 201")) {
+                System.out.println("Commit status set successfully.");
                 return ErrorCode.SUCCESS;
             } else {
-                System.out.println("Curl command executed with exit code : " + exitCode);
+                System.err.println("Curl command executed with exit code : " + exitCode);
                 if (line != null) {
-                    System.out.println("HTTP status : " + line);
+                    System.err.println("HTTP status : " + line);
                 }
                 return ErrorCode.ERROR_STATUS;
             }

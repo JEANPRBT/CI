@@ -10,7 +10,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-
+/**
+ * Class representing the Databae used to handle the build history of the CI server.
+ * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
+ */
 public final class Database{
     private Connection conn;
 
@@ -56,6 +59,7 @@ public final class Database{
      * @param commitId: the commit ID of the build
      * @param buildDate String: the date of the build
      * @param buildLogs String: the build logs
+     * @return ErrorCode : the error code
      */
     public ErrorCode insertBuild(String commitId, String buildDate, String buildLogs){
         String sql = "INSERT INTO build_history (commit_id, build_date, build_logs) VALUES ( ?, ?, ?)";
@@ -97,7 +101,7 @@ public final class Database{
 
     /**
      * Fetch data from all entries in the table.
-     * @return List<String[]> : a list of arrays containing commitId, buildDate and buildLogs
+     * @return List {@literal <}String[]{@literal >} : a list of arrays containing commitId, buildDate and buildLogs
      */
     public List<String[]> getAllBuilds() {
         List<String[]> builds = new ArrayList<>();
