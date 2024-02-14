@@ -60,6 +60,7 @@ public final class CIServer {
                     <!DOCTYPE html>
                     <html>
                     <head>
+                    <title>Build details</title>
                     <style>
                         body { font-family: Arial, sans-serif; margin: 20px; }
                         table { width: 100%%; border-collapse: collapse; }
@@ -138,6 +139,35 @@ public final class CIServer {
                 res.type("text/html");
                 return html.toString();
             });
+
+        get(endpoint, (req, res) -> {
+            String html = """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                <title>Home</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    table { width: 100%; border-collapse: separate; border-spacing: 0; } /* Adjusted */
+                    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; border-right: 1px solid #ddd; } /* Adjusted */
+                    th { background-color: #4CAF50; color: white; border-right: 1px solid #ddd; } /* Adjusted */
+                    tr:nth-child(even) { background-color: #f2f2f2; }
+                    tr:hover { background-color: #ddd; }
+                    pre { white-space: pre-wrap; word-wrap: break-word; }
+                    th, tr:first-child th, tr:first-child td { border-top: 1px solid #ddd; } /* New */
+                    td, th { border-left: 1px solid #ddd; } /* New */
+                    td:first-child, th:first-child { border-left: none; } /* New */
+                </style>
+                </head>
+                <body>
+                <h1>CI Server</h1>
+                <a href="/builds">Build History</a>
+                </body>
+                </html>
+                """;
+            res.type("text/html");
+            return html;
+        });
 
         // Route for receiving webhooks
         post(endpoint, (req, res) -> {
