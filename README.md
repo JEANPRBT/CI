@@ -1,5 +1,5 @@
 # CI
-This project is an implementation of a small continuous integration server for Java projects built with `gradle`, working with webhooks. It supports compilation, testing and notification of results using commit status. It also features a history of the past builds, which persists even if the server is reloaded.
+This  project is an implementation of a small continuous integration server for Java projects built with `gradle`, working with webhooks. It supports compilation, testing and notification of results using commit status. It also features a history of the past builds, which persists even if the server is reloaded.
 
 ## Run instructions
 The server can be run locally, but it must be accessible from the internet. We can use `ngrok` for that, which is an utility for tunneling incoming requests from an accessible domain to our machine. 
