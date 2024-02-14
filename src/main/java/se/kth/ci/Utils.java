@@ -12,37 +12,37 @@ import java.nio.file.Paths;
 
 public class Utils {
     /**
-     * Writes the gradle build log to the specified file
-     * @param inputStream
-     * @param filePath
+     * Writes the gradle build log to the specified file.
+     * @param inputStream InputStream: the input stream to read from
+     * @param filePath String: the path to the file to write to
      */
-    public static void writeBuildLogToFile(InputStream inputStream, String filePath){
+    public static void writeToFile(InputStream inputStream, String filePath){
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             BufferedWriter writer = new BufferedWriter(new FileWriter(filePath)); 
             String line;
              while ((line = reader.readLine()) != null) {
                 writer.write(line);
-                writer.newLine(); // Add a newline character after each line
+                writer.newLine();
             }
             writer.close();
         }
         catch(Exception e){
-            System.out.println("error when writing build log to file " + e);
+            System.err.println("Error when writing to file. " + e.getMessage());
         }
     }
     /**
-     * Reads the specified log file
-     * @param filePath
-     * @return content - the contens of the file
+     * Reads the specified file and return it as a String.
+     * @param filePath String: the path to the file to read
+     * @return String: the content of the file
      */
-    public static String readLogFileToString(String filePath) {
+    public static String readFromFile(String filePath) {
         String content = "";
         try {
             byte[] bytes = Files.readAllBytes(Paths.get(filePath));
             content = new String(bytes);
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Error while reading from file. " + e.getMessage());
         }
         return content;
     }

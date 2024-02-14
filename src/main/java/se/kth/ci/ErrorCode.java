@@ -26,6 +26,10 @@ public enum ErrorCode {
      */
     ERROR_BUILD,
 
+    // An error occured while setting commit status
+    ERROR_STATUS,
+
+    // The build was successful
     /**
      * An error occurred while trying to insert a value in db
      */

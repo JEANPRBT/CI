@@ -20,7 +20,7 @@ class CIServerTest {
      */
     @BeforeAll
     static void startServer() {
-        server = new CIServer(8029, "/", buildDirectory);
+        server = new CIServer(8080, "/", buildDirectory);
     }
 
     /**
@@ -177,5 +177,61 @@ class CIServerTest {
         } catch (NullPointerException e){
             System.err.println("Error while getting file path.");
         }
+    }
+
+
+    /**
+     * Test for method 'setCommitStatus'
+     * Checks that when setting the status of an existing commit, the method returns SUCCESS
+     */
+    @Test
+    public void statusValidCommitId(){
+        ErrorCode expectedCode = server.setCommitStatus(
+                ErrorCode.SUCCESS,
+                "rickardo-cornelli/testRepo",
+                "653cc3fc1350e2f3419850dc6e253950172eeb2f",
+                "test",
+                "valid commit test"
+        );
+        assertEquals(ErrorCode.SUCCESS, expectedCode, "Setting commit status failed");
+    }
+
+    /**
+     * Test for method 'setCommitStatus'
+     * Checks that when setting the status of a non-existent commit, the method returns ERROR_STATUS
+     */
+    @Test
+    public void statusInvalidCommitId(){
+        ErrorCode expectedCode = server.setCommitStatus(
+                ErrorCode.SUCCESS,
+                "rickardo-cornelli/testRepo",
+                "abc",
+                "test",
+                "invalid commit test"
+        );
+        assertEquals(ErrorCode.ERROR_STATUS, expectedCode,
+                expectedCode == ErrorCode.SUCCESS?
+                        "Setting commit status of non-existent commit succeeded." :
+                        "Error while trying to set commit status of invalid commit."
+        );
+    }
+
+    /**
+     * Test for method 'setCommitStatus'
+     * Checks that the method returns ERROR_STATUS when trying to set commit status for a repo the CI server doesn't have access to set commit statuses for
+     */
+    @Test
+    public void statusRepoWithoutAccess(){
+        ErrorCode expectedCode = server.setCommitStatus(ErrorCode.SUCCESS,
+                "noPermissions/repo",
+                "abc",
+                "test",
+                "invalid commit test"
+        );
+        assertEquals(ErrorCode.ERROR_STATUS, expectedCode,
+                expectedCode == ErrorCode.SUCCESS?
+                        "Setting commit status of repo without access succeeded." :
+                        "Error while trying to set commit status of repo without access."
+        );
     }
 }
