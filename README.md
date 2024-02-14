@@ -97,13 +97,13 @@ curl -Li \
   -H "X-GitHub-Api-Version: 2022-11-28" \
   https://api.github.com/repos/OWNER/REPO/statuses/SHA \
   -d '{
+          "target_url":<target_url>
           "state":<state>,
           "context":<context>,
           "description":<description>
       }'
 ```
 The testing is implemented by changing the commit status of a commit on the test repository hosted by Rickard Cornell.  
-
 
 ### Generate documentation
 If you want to generate documentation as HTML, then use the following command. 
