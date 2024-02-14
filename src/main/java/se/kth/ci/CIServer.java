@@ -140,6 +140,7 @@ public final class CIServer {
                 return html.toString();
             });
 
+        // Route for the home page
         get(endpoint, (req, res) -> {
             String html = """
                 <!DOCTYPE html>
