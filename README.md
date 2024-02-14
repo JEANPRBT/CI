@@ -87,8 +87,8 @@ If you want to run all unit tests, then use the following command.
 ```shell=
 ./gradlew test
 ```
-
 Every method of the `se.kth.CI.CIServer` class is unit-tested. The method `parseResponse()` retreives information that is needed to clone and build a repository such as the URL and branch name. It is tested to ensure that it cannot parse non-JSON requests and that it has the correct behavior. The method `cloneRepository()` is implemented by excuting a Github repository cloning command from the program. It is tested using a test repository hosted by Rickard Cornell. The test ensures that the method only clones repositories with a valid URL and a valid branch name. For core feature n°1, the method `triggerBuild()` is also implemented by executing a build command. It is tested using one positive test and one negative test, which both use simplistic `gradle` projects in the test resources. For core feature n°2, the method `triggerTesting()` is implemented by executing the gradle test command shown above. It is tested using one positive and one negative test, making use of simplisic `gradle` projects in test resources as well. There also is a test for a repo that doesn't contain any test sources. The core feature n°3 is implemented by setting the commit status for a commit with the results of the CI server. This is done by executing the following command with the variables switched out to the appropiate values.
+
 ```shell=
 curl -Li \
   -X POST \
@@ -103,6 +103,7 @@ curl -Li \
       }'
 ```
 The testing is implemented by changing the commit status of a commit on the test repository hosted by Rickard Cornell.  
+
 
 ### Generate documentation
 If you want to generate documentation as HTML, then use the following command. 
@@ -125,6 +126,11 @@ In order to display an individual build log, follow the next steps.
 + Click the corresponding commit ID from the build history \
 **OR**
 + Visit `<your_ngrok_domain>/builds/<commitID>`
+
+### Authorizing the server to set commit statuses
+The server required a fine-grained personal access token with write permissions for commit statuses in a repository in order to set commit statuses with the results of the CI server. In order to authorize the server to set commit statuses do the following:
+1. Create a fine-grained personal access token with commit status write permissions to the repo
+2. Add the token to the `setCommitStatus()` method in src/main/java/se/kth/ci/CIServer.java
 
 ## Statement of contributions
 ### Rickard Cornell
