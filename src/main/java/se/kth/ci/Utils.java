@@ -10,7 +10,17 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+/**
+ * Class featuring static utility methods for file I/0 operations.
+ * @author Rickard Cornell, Elissa Arias Sosa, Raahitya Botta, Zaina Ramadan, Jean Perbet
+ */
 public class Utils {
+
+    /**
+     * Private constructor to prevent instantiation.
+     */
+    private Utils() {}
+
     /**
      * Writes the gradle build log to the specified file.
      * @param inputStream InputStream: the input stream to read from
