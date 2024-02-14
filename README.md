@@ -4,6 +4,10 @@ This project is an implementation of a small continuous integration server for J
 ## Run instructions
 The server can be run locally, but it must be accessible from the internet. We can use `ngrok` for that, which is an utility for tunneling incoming requests from an accessible domain to our machine. 
 
+### Dependencies
+- Java 20.0.2
+- Gradle 8.4
+
 ### Download `ngrok`
 
 #### macOS
